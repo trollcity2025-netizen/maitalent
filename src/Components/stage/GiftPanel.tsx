@@ -77,8 +77,8 @@ export default function GiftPanel({ gifts, userCoins, contestant, onSendGift, is
                 </div>
             )}
 
-            {/* Gifts Grid */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
+            {/* Gifts Grid - Scrollable */}
+            <div className="grid grid-cols-3 gap-2 mb-4 max-h-48 overflow-y-auto pr-2">
                 {gifts?.map((gift) => {
                     const canAfford = userCoins >= gift.coin_cost;
                     return (
@@ -97,7 +97,7 @@ export default function GiftPanel({ gifts, userCoins, contestant, onSendGift, is
                                         : "border-white/5 bg-white/5 opacity-50 cursor-not-allowed"
                             )}
                         >
-                            <motion.span 
+                            <motion.span
                                 className="text-3xl block mb-1"
                                 animate={selectedGift?.id === gift.id ? { scale: [1, 1.2, 1] } : {}}
                                 transition={{ repeat: Infinity, duration: 1 }}

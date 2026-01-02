@@ -128,9 +128,13 @@ export default function Home() {
             { id: 'sparkles', name: 'Sparkles', icon: '✨', coin_cost: 50, vote_value: 5 },
             { id: 'applause', name: 'Applause', icon: '👏', coin_cost: 100, vote_value: 10 },
             { id: 'rose', name: 'Rose Bouquet', icon: '🌹', coin_cost: 250, vote_value: 25 },
+            { id: 'hearts', name: 'Hearts', icon: '❤️', coin_cost: 500, vote_value: 50 },
             { id: 'diamond', name: 'Diamond', icon: '💎', coin_cost: 1000, vote_value: 100 },
             { id: 'crown', name: 'Royal Crown', icon: '👑', coin_cost: 2500, vote_value: 300 },
-            { id: 'fireworks', name: 'Fireworks', icon: '🎆', coin_cost: 5000, vote_value: 700 }
+            { id: 'fireworks', name: 'Fireworks', icon: '🎆', coin_cost: 5000, vote_value: 700 },
+            { id: 'rocket', name: 'Rocket', icon: '🚀', coin_cost: 10000, vote_value: 1500 },
+            { id: 'unicorn', name: 'Unicorn', icon: '🦄', coin_cost: 25000, vote_value: 4000 },
+            { id: 'rainbow', name: 'Rainbow', icon: '🌈', coin_cost: 50000, vote_value: 8000 }
         ] as GiftItem[];
     }, [gifts]);
 
