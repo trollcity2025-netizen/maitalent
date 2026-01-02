@@ -1,7 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { MISSING_ENV_KEYS } from './lib/supabaseClient';
 import EnvironmentError from './Components/EnvironmentError';
-import Landing from './Pages/Landing';
 import Home from './Pages/Home';
 import CoinStore from './Pages/CoinStore';
 import Apply from './Pages/Apply';
