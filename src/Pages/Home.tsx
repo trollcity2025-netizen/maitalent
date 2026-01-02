@@ -64,6 +64,7 @@ export default function Home() {
     const [judgeScores, setJudgeScores] = useState<Record<number, number>>({});
     const [buzzedJudges, setBuzzedJudges] = useState<Record<number, boolean>>({});
     const [judgeNoteText, setJudgeNoteText] = useState('');
+    const [showControls, setShowControls] = useState(false);
 
     // Fetch current user
     useEffect(() => {

@@ -93,7 +93,7 @@ export default function CoinStore() {
 
     return (
         <Layout currentPageName="CoinStore">
-        <div className="min-h-full bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 py-8 px-4">
+        <div className="min-h-full bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 py-8 px-4 overflow-y-auto">
             <div className="container mx-auto max-w-6xl">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-8">

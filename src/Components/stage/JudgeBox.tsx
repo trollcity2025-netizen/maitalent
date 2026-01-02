@@ -45,13 +45,14 @@ type JudgeBoxProps = {
     onApproveContestant?(id: string): void;
     onRejectContestant?(id: string): void;
     onBringContestantToStage?(id: string): void;
+    onOpenControls?(): void;
 };
 
-export default function JudgeBox({ 
-    judge, 
-    seatNumber, 
-    isCurrentUserJudge, 
-    onScore, 
+export default function JudgeBox({
+    judge,
+    seatNumber,
+    isCurrentUserJudge,
+    onScore,
     onBuzz,
     onJoinSeat,
     currentScore,
@@ -60,7 +61,8 @@ export default function JudgeBox({
     currentContestantId,
     onApproveContestant,
     onRejectContestant,
-    onBringContestantToStage
+    onBringContestantToStage,
+    onOpenControls
 }: JudgeBoxProps) {
     const navigate = useNavigate();
     const [showControls, setShowControls] = useState(false);
@@ -313,7 +315,7 @@ export default function JudgeBox({
                                     <Button
                                         variant="outline"
                                         className="w-full border-white/60 text-white bg-white/10 hover:bg-white/20"
-                                        onClick={() => setShowControls(true)}
+                                        onClick={onOpenControls}
                                     >
                                         Open Judge Controls
                                     </Button>
@@ -328,6 +330,7 @@ export default function JudgeBox({
                                                 }
                                                 isJudge={isCurrentUserJudge}
                                                 currentContestantId={currentContestantId}
+                                                onClose={() => setShowControls(false)}
                                             />
                                         </DialogContent>
                                     </Dialog>

@@ -636,9 +636,6 @@ export default function AdminDashboard() {
         <Layout currentPageName="AdminDashboard">
             <div className="min-h-full bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 py-8 px-4">
                 <div className="container mx-auto max-w-5xl">
-                    <div className="mb-2 text-xs text-emerald-400 font-semibold">
-                        ✅ ADMIN DASHBOARD TEST MARKER 001
-                    </div>
                     <div className="flex items-center gap-4 mb-6">
                         <Link to={createPageUrl('Home')}>
                             <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">

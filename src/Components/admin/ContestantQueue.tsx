@@ -1,4 +1,4 @@
-import { motion as motionBase } from 'framer-motion';
+ import { motion as motionBase } from 'framer-motion';
 import {
     User, Play, X, Check,
     Music, Wand2, Drama, Sparkles
@@ -34,15 +34,17 @@ type ContestantQueueProps = {
     onBringToStage(id: string): void;
     isJudge: boolean;
     currentContestantId?: string | null;
+    onClose?(): void;
 };
 
-export default function ContestantQueue({ 
-    contestants, 
-    onApprove, 
-    onReject, 
+export default function ContestantQueue({
+    contestants,
+    onApprove,
+    onReject,
     onBringToStage,
     isJudge,
-    currentContestantId 
+    currentContestantId,
+    onClose
 }: ContestantQueueProps) {
     const pendingContestants = contestants?.filter(c => c.status === 'pending') || [];
     const approvedContestants = contestants?.filter(c => c.status === 'approved') || [];
@@ -53,9 +55,21 @@ export default function ContestantQueue({
     return (
         <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl shadow-xl overflow-hidden">
             {/* Header */}
-            <div className="p-4 bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center gap-2">
-                <User className="w-5 h-5 text-white" />
-                <h3 className="font-bold text-white">Judge Panel & Queue</h3>
+            <div className="p-4 bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <User className="w-5 h-5 text-white" />
+                    <h3 className="font-bold text-white">Judge Panel & Queue</h3>
+                </div>
+                {onClose && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onClose}
+                        className="text-white hover:text-slate-200 hover:bg-white/10"
+                    >
+                        <X className="w-4 h-4" />
+                    </Button>
+                )}
             </div>
 
             {/* Currently Live */}
