@@ -38,7 +38,7 @@ export default function CoinStore() {
         const fetchUser = async () => {
             try {
                 const currentUser = await supabase.auth.me();
-                setUser(currentUser);
+                setUser(currentUser as CoinUser);
             } catch (e) {}
         };
         fetchUser();
@@ -68,7 +68,7 @@ export default function CoinStore() {
             const newCoins = (user?.coins || 0) + pkg.coins + (pkg.bonus_coins || 0);
             await supabase.auth.updateMe({ coins: newCoins });
             const updatedUser = await supabase.auth.me();
-            setUser(updatedUser);
+            setUser(updatedUser as CoinUser);
             setSelectedPackage(null);
             alert(`Successfully purchased ${pkg.coins + (pkg.bonus_coins || 0)} coins!`);
         } catch (e) {

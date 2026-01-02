@@ -42,13 +42,14 @@ export default function JudgeApplication() {
         const fetchUser = async () => {
             try {
                 const currentUser = await supabase.auth.me();
-                setUser(currentUser);
-                if (currentUser.full_name) {
-                    setFormData(prev => ({ ...prev, display_name: currentUser.full_name }));
+                setUser(currentUser as JudgeUser);
+                const currentUserTyped = currentUser as JudgeUser;
+                if (currentUserTyped.full_name) {
+                    setFormData(prev => ({ ...prev, display_name: currentUserTyped.full_name || '' }));
                 }
 
                 // Check if already applied
-                const existingApp = await supabase.entities.Judge.filter({ user_email: currentUser.email });
+                const existingApp = await supabase.entities.Judge.filter({ user_email: currentUserTyped.email });
                 if (existingApp.length > 0) {
                     setSubmitted(true);
                 }

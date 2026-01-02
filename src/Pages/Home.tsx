@@ -69,8 +69,8 @@ export default function Home() {
         const fetchUser = async () => {
             try {
                 const currentUser = await supabase.auth.me();
-                setUser(currentUser);
-                if (!currentUser.has_completed_tour) {
+                setUser(currentUser as HomeUser);
+                if (!(currentUser as HomeUser).has_completed_tour) {
                     setShowTour(true);
                 }
             } catch (e) {
@@ -83,7 +83,7 @@ export default function Home() {
     // Fetch show state
     const { data: showStates } = useQuery<ShowStateRecord[]>({
         queryKey: ['showState'],
-        queryFn: () => supabase.entities.ShowState.list(),
+        queryFn: async () => (await supabase.entities.ShowState.list()) as ShowStateRecord[],
         refetchInterval: 3000
     });
     const showState = showStates?.[0];
@@ -91,32 +91,32 @@ export default function Home() {
     // Fetch contestants
     const { data: contestants = [] } = useQuery<ContestantItem[]>({
         queryKey: ['contestants'],
-        queryFn: () => supabase.entities.Contestant.list('-total_score'),
+        queryFn: async () => (await supabase.entities.Contestant.list('-total_score')) as ContestantItem[],
         refetchInterval: 5000
     });
 
     // Fetch judges
     const { data: judges = [] } = useQuery<JudgeItem[]>({
         queryKey: ['judges'],
-        queryFn: () => supabase.entities.Judge.list()
+        queryFn: async () => (await supabase.entities.Judge.list()) as JudgeItem[]
     });
 
     // Fetch gifts
     const { data: gifts = [] } = useQuery<GiftItem[]>({
         queryKey: ['gifts'],
-        queryFn: () => supabase.entities.Gift.list('coin_cost')
+        queryFn: async () => (await supabase.entities.Gift.list('coin_cost')) as GiftItem[]
     });
 
     // Fetch chat messages
-    const { data: chatMessages = [] } = useQuery({
+    const { data: chatMessages = [] } = useQuery<any[]>({
         queryKey: ['chatMessages'],
         queryFn: () => supabase.entities.ChatMessage.list('-created_date', 50),
         refetchInterval: 2000
     });
 
-    const currentContestant = contestants.find((c) => c.id === showState?.current_contestant_id);
+    const currentContestant = contestants.find((c: ContestantItem) => c.id === showState?.current_contestant_id);
     const isJudge =
-        !!user?.is_judge || user?.role === 'judge' || judges.some((j) => j.user_email === user?.email);
+        !!user?.is_judge || user?.role === 'judge' || judges.some((j: JudgeItem) => j.user_email === user?.email);
     const isSelfOnStage =
         !!currentContestant && !!user?.email && currentContestant.email === user.email;
 
@@ -129,7 +129,7 @@ export default function Home() {
             { id: 'diamond', name: 'Diamond', icon: '💎', coin_cost: 1000, vote_value: 100 },
             { id: 'crown', name: 'Royal Crown', icon: '👑', coin_cost: 2500, vote_value: 300 },
             { id: 'fireworks', name: 'Fireworks', icon: '🎆', coin_cost: 5000, vote_value: 700 }
-        ];
+        ] as GiftItem[];
     }, [gifts]);
 
     // Timer effect
@@ -147,13 +147,14 @@ export default function Home() {
 
     // Mutations
     const sendMessageMutation = useMutation<void, unknown, string>({
-        mutationFn: async (message: string) =>
-            supabase.entities.ChatMessage.create({
-            user_name: user?.full_name || 'Anonymous',
-            user_email: user?.email,
-            message,
-            type: 'chat'
-        }),
+        mutationFn: async (message: string) => {
+            await supabase.entities.ChatMessage.create({
+                user_name: user?.full_name || 'Anonymous',
+                user_email: user?.email,
+                message,
+                type: 'chat'
+            });
+        },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['chatMessages'] })
     });
 
@@ -180,7 +181,7 @@ export default function Home() {
                 contestant_id: currentContestant.id
             });
             const updatedUser = await supabase.auth.me();
-            setUser(updatedUser);
+            setUser(updatedUser as HomeUser);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['contestants'] });
@@ -189,14 +190,16 @@ export default function Home() {
     });
 
     const approveContestantMutation = useMutation<void, unknown, string>({
-        mutationFn: async (id: string) =>
-            supabase.entities.Contestant.update(id, { status: 'approved' }),
+        mutationFn: async (id: string) => {
+            await supabase.entities.Contestant.update(id, { status: 'approved' });
+        },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contestants'] })
     });
 
     const rejectContestantMutation = useMutation<void, unknown, string>({
-        mutationFn: async (id: string) =>
-            supabase.entities.Contestant.update(id, { status: 'rejected' }),
+        mutationFn: async (id: string) => {
+            await supabase.entities.Contestant.update(id, { status: 'rejected' });
+        },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contestants'] })
     });
 
@@ -224,7 +227,7 @@ export default function Home() {
         mutationFn: async (seatNumber: number) => {
             if (!user?.email) return;
 
-            const existingJudges = await supabase.entities.Judge.filter({ user_email: user.email });
+            const existingJudges = await supabase.entities.Judge.filter({ user_email: user.email }) as JudgeItem[];
             const existingJudge = existingJudges[0];
 
             if (existingJudge) {
@@ -316,7 +319,7 @@ export default function Home() {
                         <div className="row-start-1 col-start-2 flex items-stretch">
                             <div className="w-full grid grid-cols-2 grid-rows-2 gap-3">
                                 {[1, 2, 3, 4].map((seatNum) => {
-                                    const judge = judges.find(j => j.seat_number === seatNum);
+                                    const judge = judges.find((j: JudgeItem) => j.seat_number === seatNum);
                                     const isCurrentUserJudge = judge?.user_email === user?.email;
                                     const canJoinSeat = !judge && isJudge;
                                     return (
@@ -334,11 +337,15 @@ export default function Home() {
                                                     ? () => joinJudgeSeatMutation.mutate(seatNum)
                                                     : undefined
                                             }
-                                            contestants={contestants}
+                                            contestants={contestants as any}
                                             currentContestantId={showState?.current_contestant_id}
-                                            onApproveContestant={(id) => approveContestantMutation.mutate(id)}
-                                            onRejectContestant={(id) => rejectContestantMutation.mutate(id)}
-                                            onBringContestantToStage={(id) => bringToStageMutation.mutate(id)}
+                                            onApproveContestant={(id) =>
+                                                approveContestantMutation.mutate(id)
+                                            }
+                                            onRejectContestant={(id) =>
+                                                rejectContestantMutation.mutate(id)
+                                            }
+                                            onBringToStage={(id) => bringToStageMutation.mutate(id)}
                                         />
                                     );
                                 })}
@@ -347,7 +354,7 @@ export default function Home() {
 
                         <div className="row-start-2 col-start-1 min-h-0">
                             <LiveChat
-                                messages={chatMessages}
+                                messages={chatMessages as any}
                                 onSendMessage={(msg) => sendMessageMutation.mutate(msg)}
                                 currentUser={user}
                             />

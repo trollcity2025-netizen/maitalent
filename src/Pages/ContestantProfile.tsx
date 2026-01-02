@@ -57,13 +57,20 @@ export default function ContestantProfile() {
         fetchUser();
     }, []);
 
-    const { data: contestants = [] } = useQuery({
+    // Fetch contestant details
+    const { data: contestant } = useQuery({
         queryKey: ['contestant', contestantId],
-        queryFn: () => supabase.entities.Contestant.filter({ id: contestantId }),
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('contestants')
+                .select('*')
+                .eq('id', contestantId)
+                .single();
+            if (error) throw error;
+            return data as any;
+        },
         enabled: !!contestantId
     });
-
-    const contestant = contestants[0];
 
     const { data: contestantUser } = useQuery({
         queryKey: ['contestantUser', contestant?.email],

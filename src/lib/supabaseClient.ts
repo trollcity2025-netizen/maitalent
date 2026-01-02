@@ -15,15 +15,15 @@ const baseClient: SupabaseClient = createClient(
 type EntityValues = Record<string, unknown>;
 
 type EntityClient<TValues extends EntityValues = EntityValues> = {
-  list: (orderBy?: string, limit?: number) => Promise<unknown[]>;
-  filter: (filters: Record<string, unknown>) => Promise<unknown[]>;
-  create: (values: TValues) => Promise<unknown>;
-  update: (id: string, values: Partial<TValues>) => Promise<unknown>;
+  list: (orderBy?: string, limit?: number) => Promise<any[]>;
+  filter: (filters: Record<string, unknown>) => Promise<any[]>;
+  create: (values: TValues) => Promise<any>;
+  update: (id: string, values: Partial<TValues>) => Promise<any>;
 };
 
 type SupabaseExtended = SupabaseClient & {
   auth: SupabaseClient['auth'] & {
-    me: () => Promise<unknown>;
+    me: () => Promise<any>;
     updateMe: (values: Record<string, unknown>) => Promise<void>;
     logout: (redirectTo?: string) => Promise<void>;
     redirectToLogin: () => void;

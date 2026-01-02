@@ -71,27 +71,27 @@ export default function Audition() {
         fetchUser();
     }, []);
 
-    const { data: showStates } = useQuery<AuditionShowState[]>({
+    const { data: showStates } = useQuery({
         queryKey: ['showState'],
-        queryFn: () => supabase.entities.ShowState.list(),
+        queryFn: async () => (await supabase.entities.ShowState.list()) as AuditionShowState[],
         refetchInterval: 3000
     });
     const showState = showStates?.[0];
 
-    const { data: contestants = [] } = useQuery<AuditionContestant[]>({
+    const { data: contestants = [] } = useQuery({
         queryKey: ['contestants'],
-        queryFn: () => supabase.entities.Contestant.list('-total_score'),
+        queryFn: async () => (await supabase.entities.Contestant.list('-total_score')) as AuditionContestant[],
         refetchInterval: 5000
     });
 
-    const { data: judges = [] } = useQuery<AuditionJudge[]>({
+    const { data: judges = [] } = useQuery({
         queryKey: ['judges'],
-        queryFn: () => supabase.entities.Judge.list()
+        queryFn: async () => (await supabase.entities.Judge.list()) as AuditionJudge[]
     });
 
-    const { data: gifts = [] } = useQuery<AuditionGift[]>({
+    const { data: gifts = [] } = useQuery({
         queryKey: ['gifts'],
-        queryFn: () => supabase.entities.Gift.list('coin_cost')
+        queryFn: async () => (await supabase.entities.Gift.list('coin_cost')) as AuditionGift[]
     });
 
     const currentContestant = contestants.find((c) => c.id === showState?.current_contestant_id);
@@ -147,7 +147,7 @@ export default function Audition() {
                 contestant_id: currentContestant.id
             });
             const updatedUser = await supabase.auth.me();
-            setUser(updatedUser);
+            setUser(updatedUser as AuditionUser);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['contestants'] });
@@ -162,8 +162,9 @@ export default function Audition() {
     });
 
     const rejectContestantMutation = useMutation<void, unknown, string>({
-        mutationFn: async (id: string) =>
-            supabase.entities.Contestant.update(id, { status: 'rejected' }),
+        mutationFn: async (id: string) => {
+            await supabase.entities.Contestant.update(id, { status: 'rejected' });
+        },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contestants'] })
     });
 
@@ -294,7 +295,7 @@ export default function Audition() {
                                                     ? () => joinJudgeSeatMutation.mutate(seatNum)
                                                     : undefined
                                             }
-                                            contestants={contestants}
+                                            contestants={contestants as any}
                                             currentContestantId={showState?.current_contestant_id}
                                             onApproveContestant={(id) =>
                                                 approveContestantMutation.mutate(id)

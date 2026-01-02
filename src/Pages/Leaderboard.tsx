@@ -33,23 +33,23 @@ type RankedContestant = {
 export default function Leaderboard() {
     const { data: contestants = [] } = useQuery<RankedContestant[]>({
         queryKey: ['contestants'],
-        queryFn: () => supabase.entities.Contestant.list('-total_score')
+        queryFn: async () => (await supabase.entities.Contestant.list('-total_score')) as RankedContestant[]
     });
 
     const { data: championships = [] } = useQuery<any[]>({
         queryKey: ['championships'],
-        queryFn: () => supabase.entities.Championship.list('-created_date')
+        queryFn: async () => (await supabase.entities.Championship.list('-created_date'))
     });
 
-    const activeChampionship = championships.find((c) => c.is_active);
+    const activeChampionship = championships.find((c: any) => c.is_active);
     const championshipContestants = activeChampionship 
         ? contestants
-            .filter((c) => activeChampionship.top_12_contestants?.includes(c.id))
-            .sort((a, b) => (b.total_score || 0) - (a.total_score || 0))
+            .filter((c: RankedContestant) => activeChampionship.top_12_contestants?.includes(c.id))
+            .sort((a: RankedContestant, b: RankedContestant) => (b.total_score || 0) - (a.total_score || 0))
         : [];
 
     const allContestants = contestants.filter(
-        (c) =>
+        (c: RankedContestant) =>
             c.status === 'approved' ||
             c.status === 'performed' ||
             c.status === 'champion'
@@ -278,7 +278,7 @@ export default function Leaderboard() {
 
                             {/* Full Championship List */}
                             <div className="space-y-3">
-                                {championshipContestants.map((contestant, index) => (
+                                {championshipContestants.map((contestant: RankedContestant, index: number) => (
                                     <ContestantCard 
                                         key={contestant.id} 
                                         contestant={contestant} 
@@ -292,7 +292,7 @@ export default function Leaderboard() {
 
                     {/* All Contestants Tab */}
                     <TabsContent value="all" className="space-y-3">
-                        {allContestants.map((contestant, index) => (
+                        {allContestants.map((contestant: RankedContestant, index: number) => (
                             <ContestantCard 
                                 key={contestant.id} 
                                 contestant={contestant} 

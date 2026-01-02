@@ -65,8 +65,9 @@ export default function Profile() {
         const fetchUser = async () => {
             try {
                 const currentUser = await supabase.auth.me();
-                setUser(currentUser);
-                setEditName(currentUser?.full_name || '');
+                const userProfile = currentUser as UserProfile;
+                setUser(userProfile);
+                setEditName(userProfile?.full_name || '');
             } catch {
                 supabase.auth.redirectToLogin();
             }
@@ -82,7 +83,7 @@ export default function Profile() {
         try {
             await supabase.auth.updateMe({ full_name: nextName });
             const updatedUser = await supabase.auth.me();
-            setUser(updatedUser);
+            setUser(updatedUser as UserProfile);
         } catch (e) {
             console.error(e);
         }
@@ -99,7 +100,7 @@ export default function Profile() {
                 const { file_url } = await supabase.integrations.Core.UploadFile({ file });
                 await supabase.auth.updateMe({ profile_picture: file_url });
                 const updatedUser = await supabase.auth.me();
-                setUser(updatedUser);
+                setUser(updatedUser as UserProfile);
             } catch (e) {
                 console.error(e);
             }
@@ -365,31 +366,31 @@ export default function Profile() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <p className="text-sm text-slate-400">Stage Name</p>
-                                        <p className="text-white font-medium">{contestant.name}</p>
+                                        <p className="text-white font-medium">{(contestant as any).name}</p>
                                     </div>
                                     <div>
                                         <p className="text-sm text-slate-400">Status</p>
                                         <Badge className={
-                                            contestant.status === 'approved' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                                            contestant.status === 'pending' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                                            contestant.status === 'live' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                                            (contestant as any).status === 'approved' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                                            (contestant as any).status === 'pending' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                                            (contestant as any).status === 'live' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
                                             'bg-slate-500/20 text-slate-400 border border-slate-500/30'
                                         }>
-                                            {contestant.status?.toUpperCase()}
+                                            {(contestant as any).status?.toUpperCase()}
                                         </Badge>
                                     </div>
                                     <div>
                                         <p className="text-sm text-slate-400">Total Score</p>
-                                        <p className="text-amber-400 font-bold">{(contestant.total_score || 0).toLocaleString()}</p>
+                                        <p className="text-amber-400 font-bold">{((contestant as any).total_score || 0).toLocaleString()}</p>
                                     </div>
                                     <div>
                                         <p className="text-sm text-slate-400">Gifts Received</p>
-                                        <p className="text-pink-400 font-bold">{contestant.gifts_received || 0}</p>
+                                        <p className="text-pink-400 font-bold">{(contestant as any).gifts_received || 0}</p>
                                     </div>
                                     <div>
                                         <p className="text-sm text-slate-400">Gift Balance</p>
                                         <p className="text-emerald-400 font-bold">
-                                            ${(((contestant.total_earnings || 0) / 100) || 0).toFixed(2)}
+                                            ${((((contestant as any).total_earnings || 0) / 100) || 0).toFixed(2)}
                                         </p>
                                     </div>
                                 </div>
