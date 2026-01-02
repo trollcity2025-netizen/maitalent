@@ -48,14 +48,13 @@ export default function CoinStore() {
     useEffect(() => {
         const loadPayPalScript = () => {
             if ((window as any).paypal) {
-                setPaypalScriptLoaded(true);
                 return;
             }
 
             const script = document.createElement('script');
             script.src = `https://www.paypal.com/sdk/js?client-id=${import.meta.env.VITE_PAYPAL_CLIENT_ID}¤cy=USD`;
             script.onload = () => {
-                setPaypalScriptLoaded(true);
+                console.log('PayPal SDK loaded successfully');
             };
             script.onerror = () => {
                 console.error('Failed to load PayPal SDK');

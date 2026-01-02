@@ -65,7 +65,6 @@ export default function Home() {
     const [buzzedJudges, setBuzzedJudges] = useState<Record<number, boolean>>({});
     const [judgeNoteText, setJudgeNoteText] = useState('');
     const [judgePanelOpen, setJudgePanelOpen] = useState(false);
-    const [judgePanelPosition, setJudgePanelPosition] = useState({ x: 20, y: 20 });
 
     // Fetch current user
     useEffect(() => {
@@ -454,10 +453,6 @@ export default function Home() {
                     {/* Judge Panel Toggle Button */}
                     <div
                         className="fixed bottom-6 right-6 z-50"
-                        style={{
-                            left: `${judgePanelPosition.x}px`,
-                            top: `${judgePanelPosition.y}px`
-                        }}
                     >
                         <Button
                             variant="outline"
