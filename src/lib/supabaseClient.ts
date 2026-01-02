@@ -1,12 +1,12 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_MAITALENT_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_MAITALENT_SUPABASE_ANON_KEY;
 
 // Check for missing environment variables
 const missingKeys: string[] = [];
-if (!supabaseUrl) missingKeys.push('VITE_SUPABASE_URL');
-if (!supabaseAnonKey) missingKeys.push('VITE_SUPABASE_ANON_KEY');
+if (!supabaseUrl) missingKeys.push('VITE_MAITALENT_SUPABASE_URL');
+if (!supabaseAnonKey) missingKeys.push('VITE_MAITALENT_SUPABASE_ANON_KEY');
 
 // Export missing keys for use in error handling
 export const MISSING_ENV_KEYS = missingKeys;
