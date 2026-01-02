@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/Components/ui/button";
 import { createPageUrl } from '@/utils';
 import { Badge } from "@/Components/ui/badge";
+import { LiveKitRoom, VideoConference } from '@livekit/components-react';
+import '@livekit/components-styles';
 
 const motion: any = motionBase;
 const AnimatePresence: any = AnimatePresenceBase;
@@ -31,6 +33,9 @@ export default function TheaterStage({ contestant, isLive, curtainsOpen, timeRem
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [curtainState, setCurtainState] = useState<CurtainState>("closed");
     const [hasStarted, setHasStarted] = useState(false);
+    const [livekitToken, setLivekitToken] = useState<string | null>(null);
+    const [livekitServerUrl, setLivekitServerUrl] = useState<string | null>(null);
+    const [isBroadcasting, setIsBroadcasting] = useState(false);
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const navigate = useNavigate();
     
@@ -75,6 +80,43 @@ export default function TheaterStage({ contestant, isLive, curtainsOpen, timeRem
                 stream.getTracks().forEach((track) => track.stop());
             }
         };
+    }, [enableLocalStream, hasStarted]);
+
+    // LiveKit setup for contestant
+    useEffect(() => {
+        if (!enableLocalStream || !hasStarted) {
+            return;
+        }
+
+        const setupLiveKit = async () => {
+            try {
+                const endpoint = import.meta.env.VITE_LIVEKIT_TOKEN_ENDPOINT || '/api/livekit-token';
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        roomName: 'main-stage',
+                        role: 'publisher'
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json() as { token?: string; serverUrl?: string };
+                    if (data.token && data.serverUrl) {
+                        setLivekitToken(data.token);
+                        setLivekitServerUrl(data.serverUrl);
+                        setIsBroadcasting(true);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to setup LiveKit:', e);
+            }
+        };
+
+        setupLiveKit();
     }, [enableLocalStream, hasStarted]);
 
     useEffect(() => {
@@ -235,6 +277,23 @@ export default function TheaterStage({ contestant, isLive, curtainsOpen, timeRem
                                             playsInline
                                             className="w-full h-full object-cover"
                                         />
+                                    ) : isBroadcasting && livekitToken && livekitServerUrl ? (
+                                        <div className="w-full h-full rounded-xl overflow-hidden bg-black/50">
+                                            <LiveKitRoom
+                                                serverUrl={livekitServerUrl}
+                                                token={livekitToken}
+                                                connect
+                                                video
+                                                audio
+                                                onDisconnected={() => {
+                                                    setIsBroadcasting(false);
+                                                    setLivekitToken(null);
+                                                    setLivekitServerUrl(null);
+                                                }}
+                                            >
+                                                <VideoConference />
+                                            </LiveKitRoom>
+                                        </div>
                                     ) : (
                                         <img
                                             src={contestant.profile_image || "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800"}
