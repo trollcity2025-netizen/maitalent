@@ -64,7 +64,8 @@ export default function Home() {
     const [judgeScores, setJudgeScores] = useState<Record<number, number>>({});
     const [buzzedJudges, setBuzzedJudges] = useState<Record<number, boolean>>({});
     const [judgeNoteText, setJudgeNoteText] = useState('');
-    const [showControls, setShowControls] = useState(false);
+    const [judgePanelOpen, setJudgePanelOpen] = useState(false);
+    const [judgePanelPosition, setJudgePanelPosition] = useState({ x: 20, y: 20 });
 
     // Fetch current user
     useEffect(() => {
@@ -328,6 +329,28 @@ export default function Home() {
                                     const judge = judges.find((j: JudgeItem) => j.seat_number === seatNum);
                                     const isCurrentUserJudge = judge?.user_email === user?.email;
                                     const canJoinSeat = !judge && isJudge;
+                                    
+                                    // If no judge is present, show Mai Talent placeholder for non-judges
+                                    if (!judge && !isJudge) {
+                                        return (
+                                            <div
+                                                key={seatNum}
+                                                className="relative rounded-2xl p-4 bg-gradient-to-b from-slate-800 to-slate-900 shadow-lg border-2 border-white/10"
+                                            >
+                                                <div className="absolute top-3 left-4 px-2 py-1 rounded-full bg-black/40 text-xs font-semibold text-white">
+                                                    {`J${seatNum}`}
+                                                </div>
+                                                <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
+                                                    <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                                                        <span className="text-2xl">🎭</span>
+                                                    </div>
+                                                    <h4 className="font-semibold text-white">Mai Talent</h4>
+                                                    <p className="text-xs text-slate-400">Judge seat</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    
                                     return (
                                         <JudgeBox
                                             key={seatNum}
@@ -424,6 +447,121 @@ export default function Home() {
                     </div>
                 </div>
             </div>
+
+            {/* Judge Panel Overlay */}
+            {isJudge && (
+                <>
+                    {/* Judge Panel Toggle Button */}
+                    <div
+                        className="fixed bottom-6 right-6 z-50"
+                        style={{
+                            left: `${judgePanelPosition.x}px`,
+                            top: `${judgePanelPosition.y}px`
+                        }}
+                    >
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setJudgePanelOpen(!judgePanelOpen)}
+                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 text-white border-none shadow-lg"
+                        >
+                            {judgePanelOpen ? 'Close' : 'Open'} Judge Panel
+                        </Button>
+                    </div>
+
+                    {/* Judge Panel Overlay */}
+                    {judgePanelOpen && (
+                        <div className="fixed top-20 right-6 w-96 bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-white/20 z-40">
+                            <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                                <h3 className="font-semibold text-white">Judge Panel</h3>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setJudgePanelOpen(false)}
+                                    className="text-white hover:bg-white/10"
+                                >
+                                    ✕
+                                </Button>
+                            </div>
+                            <div className="p-4 space-y-4">
+                                {/* Contestant Queue */}
+                                <div className="bg-white/5 rounded-xl p-3">
+                                    <h4 className="text-sm font-medium text-white mb-2">Contestant Queue</h4>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                                        {contestants.filter(c => c.status === 'pending').map((contestant) => (
+                                            <div key={contestant.id} className="flex items-center justify-between p-2 bg-white/10 rounded">
+                                                <span className="text-xs text-white truncate">{contestant.name}</span>
+                                                <div className="flex gap-1">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => approveContestantMutation.mutate(contestant.id)}
+                                                        className="text-green-400 hover:text-green-300 text-xs"
+                                                    >
+                                                        ✓
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => rejectContestantMutation.mutate(contestant.id)}
+                                                        className="text-red-400 hover:text-red-300 text-xs"
+                                                    >
+                                                        ✗
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Live Contestants */}
+                                <div className="bg-white/5 rounded-xl p-3">
+                                    <h4 className="text-sm font-medium text-white mb-2">Live Contestants</h4>
+                                    <div className="space-y-2">
+                                        {contestants.filter(c => c.status === 'approved').map((contestant) => (
+                                            <div key={contestant.id} className="flex items-center justify-between p-2 bg-white/10 rounded">
+                                                <span className="text-xs text-white truncate">{contestant.name}</span>
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => bringToStageMutation.mutate(contestant.id)}
+                                                    disabled={!!showState?.current_contestant_id}
+                                                    className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs"
+                                                >
+                                                    Go Live
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Judge Controls */}
+                                <div className="bg-white/5 rounded-xl p-3">
+                                    <h4 className="text-sm font-medium text-white mb-2">Your Controls</h4>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
+                                            <Button
+                                                key={score}
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => handleJudgeScore(1, score)}
+                                                className="border-white/30 text-white hover:bg-white/20 text-xs"
+                                            >
+                                                {score}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                    <Button
+                                        className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white"
+                                        onClick={() => handleJudgeBuzz(1)}
+                                    >
+                                        Buzz
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
         </Layout>
     );
 }

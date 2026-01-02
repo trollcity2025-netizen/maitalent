@@ -33,7 +33,6 @@ export default function CoinStore() {
     const [user, setUser] = useState<CoinUser | null>(null);
     const [selectedPackage, setSelectedPackage] = useState<CoinPackageItem | null>(null);
     const [isPurchasing, setIsPurchasing] = useState(false);
-    const [paypalScriptLoaded, setPaypalScriptLoaded] = useState(false);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -130,7 +129,7 @@ export default function CoinStore() {
                     createOrder: function() {
                         return orderData.id;
                     },
-                    onApprove: async function(data: any, actions: any) {
+                    onApprove: async function(data: any) {
                         // Capture the order
                         const captureResponse = await fetch('/api/paypal/capture-order', {
                             method: 'POST',
