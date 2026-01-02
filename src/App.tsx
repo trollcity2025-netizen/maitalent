@@ -1,4 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { MISSING_ENV_KEYS } from './lib/supabaseClient';
+import EnvironmentError from './Components/EnvironmentError';
 import Landing from './Pages/Landing';
 import Home from './Pages/Home';
 import CoinStore from './Pages/CoinStore';
@@ -14,6 +16,11 @@ import Auth from './Pages/Auth';
 import Audition from './Pages/Audition';
 
 function App() {
+  // Check for missing environment variables and render error screen if any are missing
+  if (MISSING_ENV_KEYS.length > 0) {
+    return <EnvironmentError missingKeys={MISSING_ENV_KEYS} />;
+  }
+
   return (
     <Router>
       <Routes>
