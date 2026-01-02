@@ -24,7 +24,7 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<Home />} />
         <Route path="/home" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/coin-store" element={<CoinStore />} />
@@ -38,7 +38,7 @@ function App() {
         <Route path="/contestant/:id" element={<ContestantProfile />} />
         <Route path="/audition" element={<Audition />} />
         {/* Fallback */}
-        <Route path="*" element={<Landing />} />
+        <Route path="*" element={<Home />} />
       </Routes>
     </Router>
   );

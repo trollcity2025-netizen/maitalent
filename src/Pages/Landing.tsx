@@ -1,8 +1,19 @@
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/Components/ui/button';
 
 export default function Landing() {
+    const navigate = useNavigate();
+    
+    useEffect(() => {
+        // Redirect to home page after a brief delay to show the landing page briefly
+        const timer = setTimeout(() => {
+            navigate('/home');
+        }, 100); // 100ms delay to allow the page to render
+        
+        return () => clearTimeout(timer);
+    }, [navigate]);
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white flex flex-col">
             <header className="px-6 sm:px-10 pt-6 flex items-center justify-between">
