@@ -42,6 +42,7 @@ type ContestantItem = {
 };
 
 type JudgeItem = {
+    id: string;
     seat_number: number;
     user_email?: string | null;
     display_name?: string;
@@ -345,7 +346,7 @@ export default function Home() {
                                             onRejectContestant={(id) =>
                                                 rejectContestantMutation.mutate(id)
                                             }
-                                            onBringToStage={(id) => bringToStageMutation.mutate(id)}
+                                            onBringContestantToStage={(id: string) => bringToStageMutation.mutate(id)}
                                         />
                                     );
                                 })}
