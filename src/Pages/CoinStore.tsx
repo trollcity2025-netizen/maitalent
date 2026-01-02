@@ -33,6 +33,7 @@ export default function CoinStore() {
     const [user, setUser] = useState<CoinUser | null>(null);
     const [selectedPackage, setSelectedPackage] = useState<CoinPackageItem | null>(null);
     const [isPurchasing, setIsPurchasing] = useState(false);
+    const [paypalScriptLoaded, setPaypalScriptLoaded] = useState(false);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -42,6 +43,28 @@ export default function CoinStore() {
             } catch (e) {}
         };
         fetchUser();
+    }, []);
+
+    // Load PayPal SDK
+    useEffect(() => {
+        const loadPayPalScript = () => {
+            if ((window as any).paypal) {
+                setPaypalScriptLoaded(true);
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = `https://www.paypal.com/sdk/js?client-id=${import.meta.env.VITE_PAYPAL_CLIENT_ID}¤cy=USD`;
+            script.onload = () => {
+                setPaypalScriptLoaded(true);
+            };
+            script.onerror = () => {
+                console.error('Failed to load PayPal SDK');
+            };
+            document.body.appendChild(script);
+        };
+
+        loadPayPalScript();
     }, []);
 
     const { data: packages = [] } = useQuery<CoinPackageItem[]>({
@@ -64,17 +87,103 @@ export default function CoinStore() {
     const handlePurchase = async (pkg: CoinPackageItem) => {
         setIsPurchasing(true);
         try {
-            // Simulate purchase - in real app this would go through payment processor
-            const newCoins = (user?.coins || 0) + pkg.coins + (pkg.bonus_coins || 0);
-            await supabase.auth.updateMe({ coins: newCoins });
-            const updatedUser = await supabase.auth.me();
-            setUser(updatedUser as CoinUser);
-            setSelectedPackage(null);
-            alert(`Successfully purchased ${pkg.coins + (pkg.bonus_coins || 0)} coins!`);
+            // Check if PayPal is loaded
+            if (!(window as any).paypal) {
+                alert('PayPal is still loading. Please wait a moment and try again.');
+                return;
+            }
+
+            // Create PayPal order
+            const response = await fetch('/api/paypal/create-order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount: pkg.price,
+                    description: `${pkg.coins} Coins Package`,
+                    package_id: pkg.id
+                })
+            });
+
+            const orderData = await response.json();
+
+            if (orderData.id) {
+                // Initialize PayPal buttons
+                const paypal = (window as any).paypal;
+                
+                // Create a container for PayPal buttons if it doesn't exist
+                let paypalContainer = document.getElementById('paypal-buttons-container');
+                if (!paypalContainer) {
+                    paypalContainer = document.createElement('div');
+                    paypalContainer.id = 'paypal-buttons-container';
+                    paypalContainer.style.marginTop = '20px';
+                    // Find the selected package element and append after it
+                    const packageElement = document.querySelector(`[data-package-id="${pkg.id}"]`);
+                    if (packageElement) {
+                        packageElement.appendChild(paypalContainer);
+                    }
+                }
+
+                // Render PayPal buttons
+                paypal.Buttons({
+                    createOrder: function() {
+                        return orderData.id;
+                    },
+                    onApprove: async function(data: any, actions: any) {
+                        // Capture the order
+                        const captureResponse = await fetch('/api/paypal/capture-order', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                orderID: data.orderID
+                            })
+                        });
+
+                        const captureData = await captureResponse.json();
+
+                        if (captureData.status === 'COMPLETED') {
+                            // Instantly credit the user's account
+                            const totalCoins = pkg.coins + (pkg.bonus_coins || 0);
+                            const newCoins = (user?.coins || 0) + totalCoins;
+                            
+                            await supabase.auth.updateMe({ coins: newCoins });
+                            
+                            // Update local state
+                            const updatedUser = await supabase.auth.me();
+                            setUser(updatedUser as CoinUser);
+                            
+                            // Show success message
+                            alert(`Payment successful! You've received ${totalCoins.toLocaleString()} coins!`);
+                            
+                            // Clear selection
+                            setSelectedPackage(null);
+                            
+                            // Remove PayPal buttons container
+                            if (paypalContainer && paypalContainer.parentNode) {
+                                paypalContainer.parentNode.removeChild(paypalContainer);
+                            }
+                        } else {
+                            throw new Error('Payment capture failed');
+                        }
+                    },
+                    onError: function(err: any) {
+                        console.error('PayPal error:', err);
+                        alert('Payment failed. Please try again.');
+                    }
+                }).render('#paypal-buttons-container');
+
+            } else {
+                throw new Error('Failed to create PayPal order');
+            }
         } catch (e) {
-            console.error(e);
+            console.error('Purchase error:', e);
+            alert('Purchase failed. Please try again.');
+        } finally {
+            setIsPurchasing(false);
         }
-        setIsPurchasing(false);
     };
 
     const getPackageStyle = (pkg: CoinPackageItem, index: number) => {
@@ -139,6 +248,7 @@ export default function CoinStore() {
                     {availablePackages.map((pkg, index) => (
                         <motion.div
                             key={pkg.id}
+                            data-package-id={pkg.id}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
