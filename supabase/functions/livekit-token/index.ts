@@ -10,7 +10,7 @@ const corsHeaders = {
   "Access-Control-Allow-Credentials": "true",
 };
 
-serve(async (req: Request) => {
+serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }

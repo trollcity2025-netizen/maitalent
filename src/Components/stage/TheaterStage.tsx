@@ -92,7 +92,7 @@ export default function TheaterStage({ contestant, isLive, curtainsOpen, timeRem
         const setupLiveKit = async () => {
             try {
                 // Use Supabase function instead of direct API call
-                const token = await getLiveKitToken('main_show', contestant?.name || 'Contestant');
+                const token = await getLiveKitToken('main_show');
                 
                 const serverUrl = import.meta.env.VITE_LIVEKIT_SERVER_URL as string | undefined;
 

@@ -82,7 +82,7 @@ export default function JudgeBox({
             await Promise.resolve(onJoinSeat());
 
             // Use Supabase function instead of direct API call
-            const token = await getLiveKitToken('main_show', judge?.display_name || `Judge ${seatNumber}`);
+            const token = await getLiveKitToken('main_show');
             
             const serverUrl = livekitEnvServerUrl;
 

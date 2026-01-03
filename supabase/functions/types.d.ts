@@ -10,16 +10,6 @@ declare namespace Deno {
 
 // HTTP server types from std/http/server
 declare module "https://deno.land/std@0.168.0/http/server.ts" {
-  export interface Request {
-    method: string;
-    headers: Headers;
-    json(): Promise<any>;
-  }
-
-  export interface Response {
-    new(body?: BodyInit | null, init?: ResponseInit): Response;
-  }
-
   export function serve(handler: (req: Request) => Response | Promise<Response>): void;
 }
 
