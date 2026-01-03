@@ -12,7 +12,6 @@ import WelcomeTour from '@/Components/tour/WelcomeTour';
 import Layout from '@/Layouts/Layout';
 import { Textarea } from '@/Components/ui/textarea';
 import { Button } from '@/Components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
 
 type HomeUser = {
     has_completed_tour?: boolean;

@@ -117,7 +117,6 @@ export default function Audition() {
         if (showState?.is_live && endTimeStr) {
             const interval = setInterval(() => {
                 const endTime = new Date(endTimeStr).getTime();
-                const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
                 // Time remaining logic removed as timeRemaining is unused
             }, 1000);
             return () => clearInterval(interval);
