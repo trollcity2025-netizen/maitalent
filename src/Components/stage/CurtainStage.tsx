@@ -52,10 +52,7 @@ export const CurtainStage: React.FC<CurtainStageProps> = ({ roomType, onReady })
       await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       
       // Get LiveKit token
-      const token = await getLiveKitToken(
-        roomType,
-        user?.user_metadata?.full_name || user?.email || 'Anonymous'
-      );
+      const token = await getLiveKitToken(roomType);
       
       // Connect to LiveKit
       await connect(token);
