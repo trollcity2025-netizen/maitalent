@@ -3,14 +3,16 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import TheaterStage from '@/Components/stage/TheaterStage';
-import JudgeBox from '@/Components/stage/JudgeBox';
-import GiftPanel from '@/Components/stage/GiftPanel';
 import LiveChat from '@/Components/stage/LiveChat';
+import { CurtainStage } from '@/Components/stage/CurtainStage';
+import { JudgeQueuePanel } from '@/Components/admin/JudgeQueuePanel';
+import { JudgePanel } from '@/Components/stage/JudgePanel';
+import GiftPanel from '@/Components/stage/GiftPanel';
 import WelcomeTour from '@/Components/tour/WelcomeTour';
 import Layout from '@/Layouts/Layout';
 import { Textarea } from '@/Components/ui/textarea';
 import { Button } from '@/Components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 
 type HomeUser = {
     has_completed_tour?: boolean;
@@ -60,11 +62,12 @@ export default function Home() {
     const queryClient = useQueryClient();
     const [showTour, setShowTour] = useState(false);
     const [user, setUser] = useState<HomeUser | null>(null);
-    const [timeRemaining, setTimeRemaining] = useState(120);
-    const [judgeScores, setJudgeScores] = useState<Record<number, number>>({});
-    const [buzzedJudges, setBuzzedJudges] = useState<Record<number, boolean>>({});
     const [judgeNoteText, setJudgeNoteText] = useState('');
     const [judgePanelOpen, setJudgePanelOpen] = useState(false);
+    const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
+    
+    // Queue management
+    // Removed unused authUser and queueManager
 
     // Fetch current user
     useEffect(() => {
@@ -119,8 +122,6 @@ export default function Home() {
     const currentContestant = contestants.find((c: ContestantItem) => c.id === showState?.current_contestant_id);
     const isJudge =
         !!user?.is_judge || user?.role === 'judge' || judges.some((j: JudgeItem) => j.user_email === user?.email);
-    const isSelfOnStage =
-        !!currentContestant && !!user?.email && currentContestant.email === user.email;
 
     const availableGifts = useMemo<GiftItem[]>(() => {
         if (gifts && gifts.length > 0) return gifts;
@@ -143,9 +144,7 @@ export default function Home() {
         const endTimeStr = showState?.performance_end_time;
         if (showState?.is_live && endTimeStr) {
             const interval = setInterval(() => {
-                const endTime = new Date(endTimeStr).getTime();
-                const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
-                setTimeRemaining(remaining);
+                // Removed unused endTime and remaining variables
             }, 1000);
             return () => clearInterval(interval);
         }
@@ -224,8 +223,6 @@ export default function Home() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['showState'] });
             queryClient.invalidateQueries({ queryKey: ['contestants'] });
-            setJudgeScores({});
-            setBuzzedJudges({});
         }
     });
 
@@ -296,13 +293,6 @@ export default function Home() {
         }
     };
 
-    const handleJudgeScore = async (judgeId: number, score: number) => {
-        setJudgeScores((prev) => ({ ...prev, [judgeId]: score }));
-    };
-
-    const handleJudgeBuzz = async (judgeId: number) => {
-        setBuzzedJudges((prev) => ({ ...prev, [judgeId]: true }));
-    };
 
     return (
         <Layout currentPageName="Home">
@@ -312,71 +302,18 @@ export default function Home() {
                 <div className="h-full flex justify-center px-4 py-6">
                     <div className="w-full max-w-6xl h-full grid grid-cols-[minmax(0,2.1fr)_minmax(0,1.2fr)] grid-rows-[minmax(0,1.5fr)_minmax(0,1fr)] gap-y-0 gap-x-0">
                         <div className="row-start-1 col-start-1 h-full">
-                            <TheaterStage
-                                contestant={currentContestant}
-                                isLive={showState?.is_live}
-                                curtainsOpen={showState?.curtains_open}
-                                timeRemaining={timeRemaining}
-                                viewerCount={showState?.viewer_count || 0}
-                                enableLocalStream={isSelfOnStage}
+                            <CurtainStage
+                                roomType="main_show"
+                                onReady={() => {
+                                    // Handle ready state
+                                    console.log('Contestant is ready for main show');
+                                }}
                             />
                         </div>
 
                         <div className="row-start-1 col-start-2 flex items-stretch">
-                            <div className="w-full grid grid-cols-2 grid-rows-2 gap-3">
-                                {[1, 2, 3, 4].map((seatNum) => {
-                                    const judge = judges.find((j: JudgeItem) => j.seat_number === seatNum);
-                                    const isCurrentUserJudge = judge?.user_email === user?.email;
-                                    const canJoinSeat = !judge && isJudge;
-                                    
-                                    // If no judge is present, show Mai Talent placeholder for non-judges
-                                    if (!judge && !isJudge) {
-                                        return (
-                                            <div
-                                                key={seatNum}
-                                                className="relative rounded-2xl p-4 bg-gradient-to-b from-slate-800 to-slate-900 shadow-lg border-2 border-white/10"
-                                            >
-                                                <div className="absolute top-3 left-4 px-2 py-1 rounded-full bg-black/40 text-xs font-semibold text-white">
-                                                    {`J${seatNum}`}
-                                                </div>
-                                                <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
-                                                    <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                                                        <span className="text-2xl">🎭</span>
-                                                    </div>
-                                                    <h4 className="font-semibold text-white">Mai Talent</h4>
-                                                    <p className="text-xs text-slate-400">Judge seat</p>
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                    
-                                    return (
-                                        <JudgeBox
-                                            key={seatNum}
-                                            judge={judge}
-                                            seatNumber={seatNum}
-                                            isCurrentUserJudge={isCurrentUserJudge}
-                                            currentScore={judgeScores[seatNum]}
-                                            hasBuzzed={buzzedJudges[seatNum]}
-                                            onScore={(score) => handleJudgeScore(seatNum, score)}
-                                            onBuzz={() => handleJudgeBuzz(seatNum)}
-                                            onJoinSeat={
-                                                canJoinSeat
-                                                    ? () => joinJudgeSeatMutation.mutate(seatNum)
-                                                    : undefined
-                                            }
-                                            contestants={contestants as any}
-                                            currentContestantId={showState?.current_contestant_id}
-                                            onApproveContestant={(id) =>
-                                                approveContestantMutation.mutate(id)
-                                            }
-                                            onRejectContestant={(id) =>
-                                                rejectContestantMutation.mutate(id)
-                                            }
-                                            onBringContestantToStage={(id: string) => bringToStageMutation.mutate(id)}
-                                        />
-                                    );
-                                })}
+                            <div className="w-full">
+                                <JudgePanel roomType="main_show" />
                             </div>
                         </div>
 
@@ -389,6 +326,7 @@ export default function Home() {
                         </div>
 
                         <div className="row-start-2 col-start-2 mt-4 flex flex-col gap-4 min-h-0 overflow-hidden">
+                            <JudgeQueuePanel roomType="main_show" />
                             <GiftPanel
                                 gifts={availableGifts}
                                 userCoins={user?.coins || 0}
@@ -538,7 +476,6 @@ export default function Home() {
                                                 key={score}
                                                 size="sm"
                                                 variant="outline"
-                                                onClick={() => handleJudgeScore(1, score)}
                                                 className="border-white/30 text-white hover:bg-white/20 text-xs"
                                             >
                                                 {score}
@@ -547,7 +484,6 @@ export default function Home() {
                                     </div>
                                     <Button
                                         className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white"
-                                        onClick={() => handleJudgeBuzz(1)}
                                     >
                                         Buzz
                                     </Button>
@@ -556,6 +492,59 @@ export default function Home() {
                         </div>
                     )}
                 </>
+            )}
+
+            {/* Seat Selection Modal */}
+            {selectedSeat && isJudge && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl p-6 shadow-2xl border border-white/20 w-96">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-semibold text-white text-lg">Choose Your Seat</h3>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedSeat(null)}
+                                className="text-white hover:bg-white/10"
+                            >
+                                ✕
+                            </Button>
+                        </div>
+                        <div className="space-y-4">
+                            <p className="text-sm text-slate-300">
+                                {user?.role === 'admin'
+                                    ? `You are about to ${judges.find(j => j.user_email === user.email) ? 'move to' : 'join'} seat ${selectedSeat}. This will start your live broadcast.`
+                                    : `You are about to join seat ${selectedSeat}. This will start your live broadcast.`
+                                }
+                            </p>
+                            <div className="flex gap-3">
+                                <Button
+                                    onClick={() => {
+                                        joinJudgeSeatMutation.mutate(selectedSeat);
+                                        setSelectedSeat(null);
+                                    }}
+                                    disabled={joinJudgeSeatMutation.isPending}
+                                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 text-white"
+                                >
+                                    {joinJudgeSeatMutation.isPending
+                                        ? 'Processing...'
+                                        : user?.role === 'admin'
+                                            ? judges.find(j => j.user_email === user.email)
+                                                ? 'Move Seat'
+                                                : 'Join Seat'
+                                            : 'Join Seat'
+                                    }
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setSelectedSeat(null)}
+                                    className="border-white/30 text-white hover:bg-white/10"
+                                >
+                                    Cancel
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </Layout>
     );

@@ -2,9 +2,9 @@ import type React from 'react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { motion as motionBase } from 'framer-motion';
-import { 
-    Star, Upload, Music, Wand2, Drama, Sparkles, 
-    ArrowLeft, Send, CheckCircle, Info
+import {
+    Star, Upload, Music, Wand2, Drama, Sparkles,
+    ArrowLeft, Send, CheckCircle, Info, AlertCircle
 } from 'lucide-react';
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
@@ -48,6 +48,7 @@ export default function Apply() {
     });
     const [profileImage, setProfileImage] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -69,11 +70,22 @@ export default function Apply() {
         const file = files[0];
         if (file) {
             setIsUploading(true);
+            setUploadError(null);
+            
             try {
+                // Try to upload to Supabase storage
                 const { file_url } = await supabase.integrations.Core.UploadFile({ file });
                 setProfileImage(file_url);
-            } catch (e) {
-                console.error(e);
+            } catch (error) {
+                // Fallback to local preview if upload fails
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    if (event.target?.result) {
+                        setProfileImage(event.target.result as string);
+                        setUploadError('Image upload failed. Using local preview. Your application will still be submitted.');
+                    }
+                };
+                reader.readAsDataURL(file);
             }
             setIsUploading(false);
         }
@@ -84,10 +96,16 @@ export default function Apply() {
         setIsSubmitting(true);
 
         try {
+            // If profileImage is a data URL (local preview), we'll use the fallback avatar
+            const isLocalPreview = profileImage && profileImage.startsWith('data:');
+            const finalProfileImage = isLocalPreview
+                ? `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=random`
+                : profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=random`;
+
             await supabase.entities.Contestant.create({
                 ...formData,
                 email: user?.email,
-                profile_image: profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=random`,
+                profile_image: finalProfileImage,
                 status: 'pending',
                 votes: 0,
                 gifts_received: 0,
@@ -184,9 +202,9 @@ export default function Apply() {
                                 profileImage && "p-0"
                             )}>
                                 {profileImage ? (
-                                    <img 
-                                        src={profileImage} 
-                                        alt="Profile" 
+                                    <img
+                                        src={profileImage}
+                                        alt="Profile"
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (
@@ -195,10 +213,10 @@ export default function Apply() {
                             </div>
                             <label className="absolute bottom-0 right-0 w-10 h-10 bg-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:bg-slate-100 transition-colors">
                                 <Upload className="w-5 h-5 text-slate-600" />
-                                <input 
-                                    type="file" 
-                                    accept="image/*" 
-                                    className="hidden" 
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
                                     onChange={handleImageUpload}
                                     disabled={isUploading}
                                 />
@@ -207,6 +225,12 @@ export default function Apply() {
                         <p className="text-sm text-slate-400">
                             {isUploading ? 'Uploading...' : 'Upload your photo'}
                         </p>
+                        {uploadError && (
+                            <div className="mt-2 flex items-center gap-2 text-orange-400 text-sm">
+                                <AlertCircle className="w-4 h-4" />
+                                <span>{uploadError}</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Stage Name */}

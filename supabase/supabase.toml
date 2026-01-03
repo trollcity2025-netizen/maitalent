@@ -1,0 +1,9 @@
+# Supabase project configuration
+
+[api]
+url = "https://toguqsixflnbitxxbngi.supabase.co"
+anon_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZ3Vxc2l4ZmxuYml0eHhiTmdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU4NzY4NzAsImV4cCI6MjA1MTQ1Mjg3MH0.6727000000000000000000000000000000000000000"
+service_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZ3Vxc2l4ZmxuYml0eHhiTmdpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczNTg3Njg3MCwiZXhwIjoyMDUxNDUyODcwfQ.6727000000000000000000000000000000000000000"
+
+[functions]
+included = ["livekit-token"]

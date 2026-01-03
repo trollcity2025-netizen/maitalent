@@ -3,15 +3,18 @@ import { supabase } from '@/lib/supabaseClient';
 import Layout from '@/Layouts/Layout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion as motionBase, AnimatePresence as AnimatePresenceBase } from 'framer-motion';
-import { 
+import {
     MessageCircle, Send, Search, ArrowLeft,
     Check, CheckCheck
 } from 'lucide-react';
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/Components/ui/avatar";
+import { Badge } from "@/Components/ui/badge";
 import { format } from 'date-fns';
 import { cn } from "@/lib/utils";
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 
 const motion: any = motionBase;
 const AnimatePresence: any = AnimatePresenceBase;
@@ -19,6 +22,7 @@ const AnimatePresence: any = AnimatePresenceBase;
 type MessageUser = {
     email: string;
     full_name?: string | null;
+    is_verified?: boolean;
 };
 
 type MessageRecord = {
@@ -37,6 +41,7 @@ type ConversationSummary = {
     conversationId: string;
     email: string;
     name?: string | null;
+    is_verified?: boolean;
     lastMessage: MessageRecord;
     unreadCount: number;
 };
@@ -275,7 +280,25 @@ export default function Messages() {
                             </Avatar>
                             <div className="flex-1 min-w-0 text-left">
                                 <div className="flex items-center justify-between mb-1">
-                                    <p className="font-medium text-white truncate">{conv.name}</p>
+                                    <div className="flex items-center gap-2">
+                                        <Link
+                                            to={createPageUrl(`viewer/${conv.email}`)}
+                                            className="font-medium text-white truncate hover:text-blue-300 transition-colors"
+                                        >
+                                            {conv.name}
+                                        </Link>
+                                        {conv.is_verified && (
+                                            <Link
+                                                to={createPageUrl('CoinStore')}
+                                                className="cursor-pointer hover:text-amber-300 transition-colors"
+                                                title="Verified Mai Talent User"
+                                            >
+                                                <Badge className="bg-gradient-to-r from-amber-500 to-orange-600 text-white border-none shadow-lg hover:shadow-xl">
+                                                    ✅
+                                                </Badge>
+                                            </Link>
+                                        )}
+                                    </div>
                                     <span className="text-xs text-slate-400">
                                         {format(new Date(conv.lastMessage.created_date), 'MMM d')}
                                     </span>
@@ -325,7 +348,12 @@ export default function Messages() {
                                 </AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
-                                <p className="font-medium text-white">{selectedConversation.name}</p>
+                                <Link
+                                    to={createPageUrl(`viewer/${selectedConversation.email}`)}
+                                    className="font-medium text-white hover:text-blue-300 transition-colors"
+                                >
+                                    {selectedConversation.name}
+                                </Link>
                                 <p className="text-xs text-slate-400">{selectedConversation.email}</p>
                             </div>
                         </div>

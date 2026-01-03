@@ -7,6 +7,7 @@ import { createPageUrl } from '@/utils';
 import { Badge } from "@/Components/ui/badge";
 import { LiveKitRoom, VideoConference } from '@livekit/components-react';
 import '@livekit/components-styles';
+import { getLiveKitToken } from '@/lib/api';
 
 const motion: any = motionBase;
 const AnimatePresence: any = AnimatePresenceBase;
@@ -90,26 +91,17 @@ export default function TheaterStage({ contestant, isLive, curtainsOpen, timeRem
 
         const setupLiveKit = async () => {
             try {
-                const endpoint = import.meta.env.VITE_LIVEKIT_TOKEN_ENDPOINT || '/api/livekit-token';
+                // Use Supabase function instead of direct API call
+                const token = await getLiveKitToken('main_show', contestant?.name || 'Contestant');
                 
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        roomName: 'main-stage',
-                        role: 'publisher'
-                    })
-                });
+                const serverUrl = import.meta.env.VITE_LIVEKIT_SERVER_URL as string | undefined;
 
-                if (response.ok) {
-                    const data = await response.json() as { token?: string; serverUrl?: string };
-                    if (data.token && data.serverUrl) {
-                        setLivekitToken(data.token);
-                        setLivekitServerUrl(data.serverUrl);
-                        setIsBroadcasting(true);
-                    }
+                if (token && serverUrl) {
+                    setLivekitToken(token);
+                    setLivekitServerUrl(serverUrl);
+                    setIsBroadcasting(true);
+                } else {
+                    throw new Error('Missing LiveKit configuration');
                 }
             } catch (e) {
                 console.error('Failed to setup LiveKit:', e);
@@ -117,7 +109,7 @@ export default function TheaterStage({ contestant, isLive, curtainsOpen, timeRem
         };
 
         setupLiveKit();
-    }, [enableLocalStream, hasStarted]);
+    }, [enableLocalStream, hasStarted, contestant?.name]);
 
     useEffect(() => {
         if (videoRef.current && stream) {

@@ -1,0 +1,4 @@
+# Supabase Edge Functions configuration
+
+[functions.livekit-token]
+verify_jwt = false

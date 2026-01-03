@@ -3,6 +3,17 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_MAITALENT_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_MAITALENT_SUPABASE_ANON_KEY;
 
+// DEBUG: Log actual environment variable values
+console.log('=== SUPABASE CONFIG DEBUG ===');
+console.log('supabaseUrl:', supabaseUrl);
+console.log('supabaseUrl is undefined:', supabaseUrl === undefined);
+console.log('supabaseUrl is null:', supabaseUrl === null);
+console.log('supabaseUrl length:', supabaseUrl ? supabaseUrl.length : 'N/A');
+console.log('supabaseAnonKey:', supabaseAnonKey ? supabaseAnonKey.substring(0, 10) + '...' : 'undefined/null');
+console.log('supabaseAnonKey is undefined:', supabaseAnonKey === undefined);
+console.log('supabaseAnonKey is null:', supabaseAnonKey === null);
+console.log('supabaseAnonKey length:', supabaseAnonKey ? supabaseAnonKey.length : 'N/A');
+
 // Check for missing environment variables
 const missingKeys: string[] = [];
 if (!supabaseUrl) missingKeys.push('VITE_MAITALENT_SUPABASE_URL');
@@ -13,12 +24,19 @@ export const MISSING_ENV_KEYS = missingKeys;
 
 if (missingKeys.length > 0) {
   console.warn('Missing Supabase environment variables:', missingKeys);
+  console.warn('Available VITE_ env vars:', Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')));
+} else {
+  console.log('✅ Supabase environment variables loaded successfully');
 }
 
 const baseClient: SupabaseClient = createClient(
   supabaseUrl || '',
   supabaseAnonKey || ''
 );
+
+// DEBUG: Log client creation result
+console.log('Supabase client created with URL:', supabaseUrl ? '✅' : '❌');
+console.log('Supabase client created with key:', supabaseAnonKey ? '✅' : '❌');
 
 type EntityValues = Record<string, unknown>;
 
@@ -164,14 +182,45 @@ supabaseExtended.integrations = {
   Core: {
     UploadFile: async ({ file }: { file: File }) => {
       const filePath = `${Date.now()}-${file.name}`;
-      const { data, error } = await baseClient.storage
-        .from('avatars')
+      
+      // Try to upload to user-uploads bucket first
+      let { data, error } = await baseClient.storage
+        .from('user-uploads')
         .upload(filePath, file);
-      if (error || !data) {
-        throw error || new Error('Upload failed');
+      
+      // If bucket doesn't exist, try default bucket
+      if (error?.message?.includes('bucket not found') || error?.message?.includes('user-uploads')) {
+        ({ data, error } = await baseClient.storage
+          .from('avatars')
+          .upload(filePath, file));
       }
+      
+      // If still fails, try creating the bucket first
+      if (error) {
+        try {
+          await baseClient.storage.createBucket('user-uploads', {
+            public: true,
+            fileSizeLimit: 5242880, // 5MB limit
+            allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+          });
+          
+          ({ data, error } = await baseClient.storage
+            .from('user-uploads')
+            .upload(filePath, file));
+        } catch (createError) {
+          // Fallback to default bucket if bucket creation fails
+          ({ data, error } = await baseClient.storage
+            .from('avatars')
+            .upload(filePath, file));
+        }
+      }
+      
+      if (error || !data) {
+        throw error || new Error('Upload failed: Unable to upload file to any available storage bucket.');
+      }
+      
       const { data: publicUrlData } = baseClient.storage
-        .from('avatars')
+        .from('user-uploads')
         .getPublicUrl(data.path);
       return { file_url: publicUrlData.publicUrl };
     }

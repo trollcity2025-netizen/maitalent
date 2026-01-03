@@ -549,6 +549,11 @@ export default function Profile() {
                                     Buy Coins
                                 </Button>
                             </Link>
+                            <Link to={createPageUrl('Settings')}>
+                                <Button className="w-full h-14 bg-gradient-to-r from-blue-600 to-cyan-600 hover:opacity-90">
+                                    Settings
+                                </Button>
+                            </Link>
                             {!contestant && (
                                 <Link to={createPageUrl('Apply')}>
                                     <Button className="w-full h-14 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90">

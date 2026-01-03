@@ -51,7 +51,8 @@ export default function Auth() {
                     options: {
                         data: {
                             full_name: fullName
-                        }
+                        },
+                        emailRedirectTo: window.location.origin
                     }
                 });
                 if (signUpError) {
@@ -59,6 +60,9 @@ export default function Auth() {
                     setLoading(false);
                     return;
                 }
+                
+                // Note: Email confirmation should be disabled in Supabase dashboard
+                // Settings > Authentication > Email Templates > Disable email confirmation
             }
             navigate(createPageUrl('Home'));
         } catch (e: any) {
@@ -169,6 +173,12 @@ export default function Auth() {
                                 />
                             </div>
                         </div>
+
+                        {isSignup && (
+                            <div className="text-xs text-slate-400">
+                                By signing up, you agree to our terms and will be able to access the platform immediately.
+                            </div>
+                        )}
 
                         <Button
                             type="submit"

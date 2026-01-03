@@ -27,6 +27,7 @@ type CoinPackageItem = {
     bonus_coins?: number;
     is_popular?: boolean;
     icon?: string;
+    is_verification?: boolean;
 };
 
 export default function CoinStore() {
@@ -78,7 +79,8 @@ export default function CoinStore() {
             { id: 'pkg3', name: '12,000 Coins', coins: 12000, price: 49.99, icon: '🌟', is_popular: true },
             { id: 'pkg4', name: '25,000 Coins', coins: 25000, price: 99.99, icon: '👑', is_popular: false },
             { id: 'pkg5', name: '60,000 Coins', coins: 60000, price: 239.99, icon: '🔥', is_popular: false },
-            { id: 'pkg6', name: '120,000 Coins', coins: 120000, price: 459.99, icon: '🚀', is_popular: false }
+            { id: 'pkg6', name: '120,000 Coins', coins: 120000, price: 459.99, icon: '🚀', is_popular: false },
+            { id: 'verify', name: 'Mai Talent Verified', coins: 0, price: 9.99, icon: '✅', is_popular: false, is_verification: true }
         ];
     }, [packages]);
 
@@ -143,18 +145,30 @@ export default function CoinStore() {
                         const captureData = await captureResponse.json();
 
                         if (captureData.status === 'COMPLETED') {
-                            // Instantly credit the user's account
-                            const totalCoins = pkg.coins + (pkg.bonus_coins || 0);
-                            const newCoins = (user?.coins || 0) + totalCoins;
-                            
-                            await supabase.auth.updateMe({ coins: newCoins });
-                            
-                            // Update local state
-                            const updatedUser = await supabase.auth.me();
-                            setUser(updatedUser as CoinUser);
-                            
-                            // Show success message
-                            alert(`Payment successful! You've received ${totalCoins.toLocaleString()} coins!`);
+                            if (pkg.is_verification) {
+                                // Handle verification purchase
+                                await supabase.auth.updateMe({ is_verified: true });
+                                
+                                // Update local state
+                                const updatedUser = await supabase.auth.me();
+                                setUser(updatedUser as CoinUser);
+                                
+                                // Show success message
+                                alert('Payment successful! You are now a verified Mai Talent user!');
+                            } else {
+                                // Handle coin package purchase
+                                const totalCoins = pkg.coins + (pkg.bonus_coins || 0);
+                                const newCoins = (user?.coins || 0) + totalCoins;
+                                
+                                await supabase.auth.updateMe({ coins: newCoins });
+                                
+                                // Update local state
+                                const updatedUser = await supabase.auth.me();
+                                setUser(updatedUser as CoinUser);
+                                
+                                // Show success message
+                                alert(`Payment successful! You've received ${totalCoins.toLocaleString()} coins!`);
+                            }
                             
                             // Clear selection
                             setSelectedPackage(null);
@@ -267,25 +281,32 @@ export default function CoinStore() {
                             <div className="text-center mb-4">
                                 <span className="text-4xl">{pkg.icon}</span>
                                 <h3 className="text-xl font-bold text-white mt-2">{pkg.name}</h3>
-                            </div>
-
-                            <div className="text-center mb-4">
-                                <div className="flex items-center justify-center gap-2">
-                                    <Coins className="w-6 h-6 text-amber-400" />
-                                    <span className="text-3xl font-bold text-amber-400">{pkg.coins.toLocaleString()}</span>
-                                </div>
-                                {(pkg.bonus_coins || 0) > 0 && (
-                                    <Badge className="mt-2 bg-green-500/20 text-green-400 border border-green-500/30">
-                                        +{(pkg.bonus_coins || 0).toLocaleString()} BONUS
-                                    </Badge>
+                                {pkg.is_verification && (
+                                    <p className="text-sm text-slate-300 mt-1">Get the official verification badge</p>
                                 )}
                             </div>
 
+                            {!pkg.is_verification && (
+                                <div className="text-center mb-4">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <Coins className="w-6 h-6 text-amber-400" />
+                                        <span className="text-3xl font-bold text-amber-400">{pkg.coins.toLocaleString()}</span>
+                                    </div>
+                                    {(pkg.bonus_coins || 0) > 0 && (
+                                        <Badge className="mt-2 bg-green-500/20 text-green-400 border border-green-500/30">
+                                            +{(pkg.bonus_coins || 0).toLocaleString()} BONUS
+                                        </Badge>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="text-center mb-4">
                                 <span className="text-3xl font-bold text-white">${pkg.price.toFixed(2)}</span>
-                                <p className="text-sm text-slate-400">
-                                    ${(pkg.price / (pkg.coins + (pkg.bonus_coins || 0)) * 100).toFixed(2)} per 100 coins
-                                </p>
+                                {!pkg.is_verification && (
+                                    <p className="text-sm text-slate-400">
+                                        ${(pkg.price / (pkg.coins + (pkg.bonus_coins || 0)) * 100).toFixed(2)} per 100 coins
+                                    </p>
+                                )}
                             </div>
 
                             <Button

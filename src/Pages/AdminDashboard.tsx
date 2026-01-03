@@ -265,7 +265,7 @@ async function generateWinnersForCompetition(weekId: string) {
 export default function AdminDashboard() {
     const [user, setUser] = useState<AdminUser | null>(null);
     const [activeTab, setActiveTab] =
-        useState<'overview' | 'payouts' | 'competitions' | 'users' | 'moderation'>('overview');
+        useState<'overview' | 'payouts' | 'competitions' | 'users' | 'moderation' | 'applications'>('overview');
     const [selectedPayout, setSelectedPayout] = useState<AdminPayoutRow | null>(null);
     const [provider, setProvider] = useState('');
     const [code, setCode] = useState('');
@@ -415,6 +415,42 @@ export default function AdminDashboard() {
         enabled: !!user?.email
     });
 
+    const { data: contestantApplications = [], refetch: refetchContestantApplications } = useQuery<
+        any[]
+    >({
+        queryKey: ['contestantApplications'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('contestants')
+                .select('*')
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false });
+            if (error) {
+                throw error;
+            }
+            return (data || []) as any[];
+        },
+        enabled: !!user?.email
+    });
+
+    const { data: judgeApplications = [], refetch: refetchJudgeApplications } = useQuery<
+        any[]
+    >({
+        queryKey: ['judgeApplications'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('judges')
+                .select('*')
+                .eq('application_status', 'pending')
+                .order('created_at', { ascending: false });
+            if (error) {
+                throw error;
+            }
+            return (data || []) as any[];
+        },
+        enabled: !!user?.email
+    });
+
     const issueMutation = useMutation({
         mutationFn: async () => {
             if (!user?.email || !user.id || !selectedPayout) {
@@ -560,6 +596,78 @@ export default function AdminDashboard() {
         }
     });
 
+    const approveContestantMutation = useMutation({
+        mutationFn: async (id: string) => {
+            const { data, error } = await supabase
+                .from('contestants')
+                .update({ status: 'approved' })
+                .eq('id', id)
+                .select()
+                .single();
+            if (error) {
+                throw error;
+            }
+            return data;
+        },
+        onSuccess: () => {
+            refetchContestantApplications();
+        }
+    });
+
+    const rejectContestantMutation = useMutation({
+        mutationFn: async (id: string) => {
+            const { data, error } = await supabase
+                .from('contestants')
+                .update({ status: 'rejected' })
+                .eq('id', id)
+                .select()
+                .single();
+            if (error) {
+                throw error;
+            }
+            return data;
+        },
+        onSuccess: () => {
+            refetchContestantApplications();
+        }
+    });
+
+    const approveJudgeMutation = useMutation({
+        mutationFn: async (id: string) => {
+            const { data, error } = await supabase
+                .from('judges')
+                .update({ application_status: 'approved', is_active: true })
+                .eq('id', id)
+                .select()
+                .single();
+            if (error) {
+                throw error;
+            }
+            return data;
+        },
+        onSuccess: () => {
+            refetchJudgeApplications();
+        }
+    });
+
+    const rejectJudgeMutation = useMutation({
+        mutationFn: async (id: string) => {
+            const { data, error } = await supabase
+                .from('judges')
+                .update({ application_status: 'rejected', is_active: false })
+                .eq('id', id)
+                .select()
+                .single();
+            if (error) {
+                throw error;
+            }
+            return data;
+        },
+        onSuccess: () => {
+            refetchJudgeApplications();
+        }
+    });
+
     const [userSearch, setUserSearch] = useState('');
 
     const unresolvedReportsCount = useMemo(
@@ -672,6 +780,7 @@ export default function AdminDashboard() {
                             <TabsTrigger value="payouts">Payout Requests</TabsTrigger>
                             <TabsTrigger value="competitions">Competitions</TabsTrigger>
                             <TabsTrigger value="users">Users</TabsTrigger>
+                            <TabsTrigger value="applications">Applications</TabsTrigger>
                             <TabsTrigger value="moderation">Moderation</TabsTrigger>
                         </TabsList>
 
@@ -1297,6 +1406,125 @@ export default function AdminDashboard() {
                                         })}
                                     </div>
                                 )}
+                            </motion.div>
+                        </TabsContent>
+
+                        <TabsContent value="applications" className="space-y-4">
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-white/5 backdrop-blur rounded-2xl p-6 border border-white/10"
+                            >
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <Users className="w-5 h-5 text-purple-400" />
+                                        <h3 className="text-lg font-semibold text-white">Applications</h3>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Badge className="bg-purple-500/20 text-purple-400 border border-purple-500/40">
+                                            Contestants: {contestantApplications.length}
+                                        </Badge>
+                                        <Badge className="bg-indigo-500/20 text-indigo-400 border border-indigo-500/40">
+                                            Judges: {judgeApplications.length}
+                                        </Badge>
+                                    </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {/* Contestant Applications */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-sm font-semibold text-slate-200 mb-2">Contestant Applications</h4>
+                                        {contestantApplications.length === 0 ? (
+                                            <p className="text-sm text-slate-400">No pending contestant applications.</p>
+                                        ) : (
+                                            <div className="space-y-3 max-h-64 overflow-y-auto">
+                                                {contestantApplications.map((app) => (
+                                                    <div
+                                                        key={app.id}
+                                                        className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2"
+                                                    >
+                                                        <div>
+                                                            <p className="text-sm text-white font-medium">
+                                                                {app.name}
+                                                            </p>
+                                                            <p className="text-xs text-slate-400 capitalize">
+                                                                {app.talent_type} • {app.email}
+                                                            </p>
+                                                            <p className="text-xs text-slate-500">
+                                                                {formatRelativeTime(app.created_at)}
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="border-white/20 text-xs text-slate-200"
+                                                                onClick={() => approveContestantMutation.mutate(app.id)}
+                                                            >
+                                                                Approve
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="border-white/20 text-xs text-slate-200"
+                                                                onClick={() => rejectContestantMutation.mutate(app.id)}
+                                                            >
+                                                                Reject
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Judge Applications */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-sm font-semibold text-slate-200 mb-2">Judge Applications</h4>
+                                        {judgeApplications.length === 0 ? (
+                                            <p className="text-sm text-slate-400">No pending judge applications.</p>
+                                        ) : (
+                                            <div className="space-y-3 max-h-64 overflow-y-auto">
+                                                {judgeApplications.map((app) => (
+                                                    <div
+                                                        key={app.id}
+                                                        className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2"
+                                                    >
+                                                        <div>
+                                                            <p className="text-sm text-white font-medium">
+                                                                {app.display_name}
+                                                            </p>
+                                                            <p className="text-xs text-slate-400">
+                                                                {app.specialty} • {app.user_email}
+                                                            </p>
+                                                            <p className="text-xs text-slate-500">
+                                                                {formatRelativeTime(app.created_at)}
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="border-white/20 text-xs text-slate-200"
+                                                                onClick={() => approveJudgeMutation.mutate(app.id)}
+                                                            >
+                                                                Approve
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="border-white/20 text-xs text-slate-200"
+                                                                onClick={() => rejectJudgeMutation.mutate(app.id)}
+                                                            >
+                                                                Reject
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </motion.div>
                         </TabsContent>
 

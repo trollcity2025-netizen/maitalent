@@ -11,6 +11,8 @@ import Leaderboard from './Pages/Leaderboard';
 import JudgeApplication from './Pages/JudgeApplication';
 import Messages from './Pages/Messages';
 import ContestantProfile from './Pages/ContestantProfile';
+import ViewerProfile from './Pages/ViewerProfile';
+import UserSettings from './Pages/UserSettings';
 import Auth from './Pages/Auth';
 import Audition from './Pages/Audition';
 
@@ -35,6 +37,8 @@ function App() {
         <Route path="/judge-application" element={<JudgeApplication />} />
         <Route path="/messages" element={<Messages />} />
         <Route path="/contestant/:id" element={<ContestantProfile />} />
+        <Route path="/viewer/:userId" element={<ViewerProfile />} />
+        <Route path="/settings" element={<UserSettings />} />
         <Route path="/audition" element={<Audition />} />
         {/* Fallback */}
         <Route path="*" element={<Home />} />

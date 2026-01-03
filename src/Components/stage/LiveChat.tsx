@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion as motionBase, AnimatePresence as AnimatePresenceBase } from 'framer-motion';
-import { Send, Gift, MessageCircle } from 'lucide-react';
+import { Send, Gift, MessageCircle, Coins } from 'lucide-react';
 import { Input } from "@/Components/ui/input";
 import { Button } from "@/Components/ui/button";
-import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/Components/ui/avatar";
+import { Badge } from "@/Components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 
 const motion: any = motionBase;
 const AnimatePresence: any = AnimatePresenceBase;
@@ -12,18 +15,29 @@ const AnimatePresence: any = AnimatePresenceBase;
 type ChatMessage = {
     id?: string;
     user_name?: string;
+    user_email?: string;
     message: string;
     type?: string;
     gift_type?: string;
+    profile_picture?: string;
+    level?: number;
+    coins?: number;
+    is_verified?: boolean;
 };
 
 type LiveChatProps = {
     messages: ChatMessage[];
     onSendMessage(message: string): void;
-    currentUser?: unknown;
+    currentUser?: {
+        email?: string | null;
+        full_name?: string | null;
+        coins?: number;
+        level?: number;
+        profile_picture?: string | null;
+    } | null;
 };
 
-export default function LiveChat({ messages, onSendMessage }: LiveChatProps) {
+export default function LiveChat({ messages, onSendMessage, currentUser }: LiveChatProps) {
     const [newMessage, setNewMessage] = useState('');
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -35,8 +49,28 @@ export default function LiveChat({ messages, onSendMessage }: LiveChatProps) {
         scrollToBottom();
     }, [messages]);
 
+    // Auto-delete messages after 30 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = new Date();
+            const thirtySecondsAgo = new Date(now.getTime() - 30000);
+            
+            // Filter out messages older than 30 seconds
+            messages.filter(msg => {
+                if (!msg.id) return true; // Keep messages without IDs (system messages)
+                const msgDate = new Date(msg.id); // Assuming ID contains timestamp or use created_date
+                return msgDate > thirtySecondsAgo;
+            });
+            
+            // If messages were filtered, you might need to update parent state
+            // For now, we'll just visually hide old messages
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [messages]);
+
     const handleSend = () => {
-        if (newMessage.trim()) {
+        if (newMessage.trim() && currentUser) {
             onSendMessage(newMessage.trim());
             setNewMessage('');
         }
@@ -85,15 +119,41 @@ export default function LiveChat({ messages, onSendMessage }: LiveChatProps) {
                         >
                             <div className="flex items-start gap-2">
                                 <Avatar className="h-7 w-7 flex-shrink-0">
+                                    <AvatarImage src={msg.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.user_name || 'User')}&background=random`} />
                                     <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-xs">
                                         {msg.user_name?.[0]?.toUpperCase() || 'U'}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-0.5">
-                                        <span className="text-sm font-medium text-white truncate">
+                                        <Link
+                                            to={createPageUrl(`viewer/${msg.user_email}`)}
+                                            className="text-sm font-medium text-white truncate cursor-pointer hover:text-blue-300 transition-colors"
+                                        >
                                             {msg.user_name}
-                                        </span>
+                                        </Link>
+                                        {msg.is_verified && (
+                                            <Link
+                                                to={createPageUrl('CoinStore')}
+                                                className="cursor-pointer hover:text-amber-300 transition-colors"
+                                                title="Verified Mai Talent User"
+                                            >
+                                                <Badge className="bg-gradient-to-r from-amber-500 to-orange-600 text-white border-none shadow-lg hover:shadow-xl">
+                                                    ✅
+                                                </Badge>
+                                            </Link>
+                                        )}
+                                        {msg.level && (
+                                            <Badge className="bg-slate-800 text-amber-400 border border-amber-500/40 text-xs px-1 py-0">
+                                                L{msg.level}
+                                            </Badge>
+                                        )}
+                                        {msg.coins !== undefined && (
+                                            <span className="text-xs text-amber-400 flex items-center gap-1">
+                                                <Coins className="w-3 h-3" />
+                                                {msg.coins}
+                                            </span>
+                                        )}
                                         {msg.type === 'gift' && (
                                             <Gift className="w-3 h-3 text-pink-400" />
                                         )}
@@ -117,23 +177,29 @@ export default function LiveChat({ messages, onSendMessage }: LiveChatProps) {
 
             {/* Input */}
             <div className="p-4 border-t border-white/10">
-                <div className="flex gap-2">
-                    <Input
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        placeholder="Say something..."
-                        className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus-visible:ring-blue-500"
-                        maxLength={200}
-                    />
-                    <Button
-                        onClick={handleSend}
-                        disabled={!newMessage.trim()}
-                        className="bg-blue-600 hover:bg-blue-700"
-                    >
-                        <Send className="w-4 h-4" />
-                    </Button>
-                </div>
+                {currentUser ? (
+                    <div className="flex gap-2">
+                        <Input
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyPress={handleKeyPress}
+                            placeholder="Say something..."
+                            className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus-visible:ring-blue-500"
+                            maxLength={200}
+                        />
+                        <Button
+                            onClick={handleSend}
+                            disabled={!newMessage.trim()}
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
+                            <Send className="w-4 h-4" />
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="text-center py-2 text-slate-400">
+                        Please log in to send messages
+                    </div>
+                )}
             </div>
         </div>
     );

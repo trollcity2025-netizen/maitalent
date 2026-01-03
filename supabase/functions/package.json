@@ -1,0 +1,12 @@
+{
+  "name": "maitalent-supabase-functions",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "livekit-server-sdk": "^2.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  }
+}

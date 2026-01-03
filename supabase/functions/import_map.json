@@ -1,0 +1,8 @@
+{
+  "imports": {
+    "std/": "https://deno.land/std@0.168.0/",
+    "std/http/server.ts": "https://deno.land/std@0.168.0/http/server.ts",
+    "livekit-server-sdk": "https://esm.sh/livekit-server-sdk@2.6.0",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.46.6"
+  }
+}

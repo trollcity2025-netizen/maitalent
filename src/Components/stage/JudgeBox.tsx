@@ -1,79 +1,49 @@
 import { useState } from 'react';
 import { motion as motionBase } from 'framer-motion';
-import { Hand, Plus } from 'lucide-react';
+import { Plus, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/Components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/Components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { createPageUrl } from '@/utils';
-import {
-    Dialog,
-    DialogContent
-} from "@/Components/ui/dialog";
-import ContestantQueue from "@/Components/admin/ContestantQueue";
 import { LiveKitRoom, VideoConference } from '@livekit/components-react';
 import '@livekit/components-styles';
+import { supabase } from '@/lib/supabaseClient';
+import { getLiveKitToken } from '@/lib/api';
 
 const motion: any = motionBase;
 
 type JudgeInfo = {
+    id?: string;
     display_name?: string;
     specialty?: string;
     is_active?: boolean;
     avatar?: string;
 };
 
-type JudgeBoxContestant = {
-    id: string;
-    name?: string;
-    profile_image?: string;
-    talent_type?: string;
-    status?: string;
-};
 
 type JudgeBoxProps = {
     judge?: JudgeInfo | null;
     seatNumber: number;
     isCurrentUserJudge: boolean;
-    onScore(score: number): void;
-    onBuzz(): void;
     onJoinSeat?(): void;
-    currentScore?: number;
-    hasBuzzed: boolean;
-    contestants?: JudgeBoxContestant[] | null;
-    currentContestantId?: string | null;
-    onApproveContestant?(id: string): void;
-    onRejectContestant?(id: string): void;
-    onBringContestantToStage?(id: string): void;
-    onOpenControls?(): void;
 };
 
 export default function JudgeBox({
     judge,
     seatNumber,
     isCurrentUserJudge,
-    onScore,
-    onBuzz,
-    onJoinSeat,
-    currentScore,
-    hasBuzzed,
-    contestants,
-    currentContestantId,
-    onApproveContestant,
-    onRejectContestant,
-    onBringContestantToStage,
-    onOpenControls
+    onJoinSeat
 }: JudgeBoxProps) {
     const navigate = useNavigate();
-    const [showControls, setShowControls] = useState(false);
     const [isBroadcasting, setIsBroadcasting] = useState(false);
     const [isStartingBroadcast, setIsStartingBroadcast] = useState(false);
     const [livekitToken, setLivekitToken] = useState<string | null>(null);
     const [livekitServerUrl, setLivekitServerUrl] = useState<string | null>(null);
     const [broadcastError, setBroadcastError] = useState<string | null>(null);
+    const [isExiting, setIsExiting] = useState(false);
 
     const livekitEnvServerUrl = import.meta.env.VITE_LIVEKIT_SERVER_URL as string | undefined;
-    const livekitTokenEndpoint = import.meta.env.VITE_LIVEKIT_TOKEN_ENDPOINT as string | undefined;
 
     const seatColors: Record<number, string> = {
         1: 'from-red-600 to-red-800',
@@ -111,38 +81,41 @@ export default function JudgeBox({
 
             await Promise.resolve(onJoinSeat());
 
-            const endpoint = livekitTokenEndpoint || '/api/livekit-token';
+            // Use Supabase function instead of direct API call
+            const token = await getLiveKitToken('main_show', judge?.display_name || `Judge ${seatNumber}`);
+            
+            const serverUrl = livekitEnvServerUrl;
 
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    roomName: `judge-seat-${seatNumber}`,
-                    role: 'publisher'
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to get LiveKit token');
-            }
-
-            const data = await response.json() as { token?: string; serverUrl?: string };
-
-            const serverUrl = data.serverUrl || livekitEnvServerUrl;
-
-            if (!data.token || !serverUrl) {
+            if (!token || !serverUrl) {
                 throw new Error('Missing LiveKit configuration');
             }
 
-            setLivekitToken(data.token);
+            setLivekitToken(token);
             setLivekitServerUrl(serverUrl);
             setIsBroadcasting(true);
         } catch {
             setBroadcastError('Unable to start broadcast');
         } finally {
             setIsStartingBroadcast(false);
+        }
+    };
+
+    const handleExitSeat = async () => {
+        if (!judge?.id) return;
+        
+        try {
+            setIsExiting(true);
+            await supabase.entities.Judge.update(judge.id, {
+                seat_number: null,
+                is_active: false
+            });
+            setIsBroadcasting(false);
+            setLivekitToken(null);
+            setLivekitServerUrl(null);
+        } catch (error) {
+            console.error('Error exiting seat:', error);
+        } finally {
+            setIsExiting(false);
         }
     };
 
@@ -244,22 +217,24 @@ export default function JudgeBox({
                         )}
                     </div>
 
-                    {currentScore !== undefined && currentScore > 0 && (
-                        <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="absolute -top-3 -right-3 bg-amber-400 text-amber-900 rounded-full w-10 h-10 flex items-center justify-center font-bold shadow-lg"
-                        >
-                            {currentScore}
-                        </motion.div>
-                    )}
 
                     {isCurrentUserJudge && (
                         <div className="space-y-3">
                             {isBroadcasting &&
                                 livekitToken &&
                                 (livekitServerUrl || livekitEnvServerUrl) && (
-                                    <div className="rounded-xl overflow-hidden bg-black/60">
+                                    <div className="relative rounded-xl overflow-hidden bg-black/60">
+                                        {/* Red Curtains for Judge Broadcast */}
+                                        <div className="absolute inset-0 z-10">
+                                            {/* Left Curtain */}
+                                            <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-red-900 to-red-700 shadow-lg">
+                                                <div className="absolute inset-0 bg-black opacity-30" />
+                                            </div>
+                                            {/* Right Curtain */}
+                                            <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-red-900 to-red-700 shadow-lg">
+                                                <div className="absolute inset-0 bg-black opacity-30" />
+                                            </div>
+                                        </div>
                                         <LiveKitRoom
                                             serverUrl={
                                                 livekitServerUrl ||
@@ -278,77 +253,26 @@ export default function JudgeBox({
                                         </LiveKitRoom>
                                     </div>
                                 )}
-                            <div className="flex gap-1">
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
-                                    <button
-                                        key={score}
-                                        onClick={() => onScore(score)}
-                                        className={cn(
-                                            "flex-1 py-2 rounded text-sm font-medium transition-all",
-                                            currentScore === score
-                                                ? "bg-amber-400 text-amber-900"
-                                                : "bg-white/20 text-white hover:bg-white/30"
-                                        )}
-                                    >
-                                        {score}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <Button
-                                variant="outline"
-                                onClick={onBuzz}
-                                disabled={hasBuzzed}
-                                className={cn(
-                                    "w-full border-2",
-                                    hasBuzzed
-                                        ? "bg-red-500 border-red-500 text-white"
-                                        : "border-white/50 text-white hover:bg-white/20"
+                            <div className="flex justify-between items-center">
+                                {isBroadcasting ? (
+                                    <span className="text-xs text-slate-400">Live Broadcast</span>
+                                ) : (
+                                    <span className="text-xs text-slate-400">Judge Seat</span>
                                 )}
-                            >
-                                <Hand className="w-4 h-4 mr-2" />
-                                {hasBuzzed ? "BUZZED!" : "Buzz"}
-                            </Button>
-
-                            {contestants && (
-                                <>
-                                    <Button
-                                        variant="outline"
-                                        className="w-full border-white/60 text-white bg-white/10 hover:bg-white/20"
-                                        onClick={onOpenControls}
-                                    >
-                                        Open Judge Controls
-                                    </Button>
-                                    <Dialog open={showControls} onOpenChange={setShowControls}>
-                                        <DialogContent className="bg-slate-900 border-white/10 p-0 max-w-xl w-full mx-4 rounded-3xl">
-                                            <ContestantQueue
-                                                contestants={contestants}
-                                                onApprove={(id) => onApproveContestant && onApproveContestant(id)}
-                                                onReject={(id) => onRejectContestant && onRejectContestant(id)}
-                                                onBringToStage={(id) =>
-                                                    onBringContestantToStage && onBringContestantToStage(id)
-                                                }
-                                                isJudge={isCurrentUserJudge}
-                                                currentContestantId={currentContestantId}
-                                                onClose={() => setShowControls(false)}
-                                            />
-                                        </DialogContent>
-                                    </Dialog>
-                                </>
-                            )}
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleExitSeat}
+                                    disabled={isExiting}
+                                    className="text-xs border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                                >
+                                    <LogOut className="w-3 h-3 mr-1" />
+                                    {isExiting ? 'Exiting...' : 'Exit Seat'}
+                                </Button>
+                            </div>
                         </div>
                     )}
 
-                    {hasBuzzed && !isCurrentUserJudge && (
-                        <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: [1, 1.1, 1] }}
-                            transition={{ repeat: Infinity, duration: 0.5 }}
-                            className="mt-3 bg-red-500 text-white text-center py-2 rounded-lg font-bold"
-                        >
-                            ✋ BUZZED
-                        </motion.div>
-                    )}
                 </>
             )}
         </motion.div>

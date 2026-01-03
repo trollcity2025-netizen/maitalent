@@ -3,12 +3,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import TheaterStage from '@/Components/stage/TheaterStage';
-import JudgeBox from '@/Components/stage/JudgeBox';
 import GiftPanel from '@/Components/stage/GiftPanel';
+import { CurtainStage } from '@/Components/stage/CurtainStage';
+import { JudgeQueuePanel } from '@/Components/admin/JudgeQueuePanel';
+import { JudgePanel } from '@/Components/stage/JudgePanel';
 import Layout from '@/Layouts/Layout';
 import { Textarea } from '@/Components/ui/textarea';
 import { Button } from '@/Components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 
 type AuditionUser = {
     has_completed_tour?: boolean;
@@ -55,17 +57,17 @@ type AuditionGift = {
 
 export default function Audition() {
     const queryClient = useQueryClient();
-    const [user, setUser] = useState<AuditionUser | null>(null);
-    const [timeRemaining, setTimeRemaining] = useState(120);
-    const [judgeScores, setJudgeScores] = useState<Record<number, number>>({});
-    const [buzzedJudges, setBuzzedJudges] = useState<Record<number, boolean>>({});
+    const [currentUser, setCurrentUser] = useState<AuditionUser | null>(null);
     const [judgeNoteText, setJudgeNoteText] = useState('');
+    
+    // Queue management
+    const { user } = useAuth();
 
     useEffect(() => {
         const fetchUser = async () => {
             try {
                 const currentUser = await supabase.auth.me();
-                setUser(currentUser);
+                setCurrentUser(currentUser);
             } catch (e) {}
         };
         fetchUser();
@@ -96,9 +98,7 @@ export default function Audition() {
 
     const currentContestant = contestants.find((c) => c.id === showState?.current_contestant_id);
     const isJudge =
-        !!user?.is_judge || user?.role === 'judge' || judges.some((j) => j.user_email === user?.email);
-    const isSelfOnStage =
-        !!currentContestant && !!user?.email && currentContestant.email === user.email;
+        !!currentUser?.is_judge || currentUser?.role === 'judge' || judges.some((j) => j.user_email === currentUser?.email);
 
     const availableGifts = useMemo<AuditionGift[]>(() => {
         if (gifts && gifts.length > 0) return gifts;
@@ -118,7 +118,7 @@ export default function Audition() {
             const interval = setInterval(() => {
                 const endTime = new Date(endTimeStr).getTime();
                 const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
-                setTimeRemaining(remaining);
+                // Time remaining logic removed as timeRemaining is unused
             }, 1000);
             return () => clearInterval(interval);
         }
@@ -127,7 +127,7 @@ export default function Audition() {
     const sendGiftMutation = useMutation<void, unknown, AuditionGift>({
         mutationFn: async (gift: AuditionGift) => {
             await supabase.auth.updateMe({
-                coins: (user?.coins || 0) - gift.coin_cost
+                coins: (currentUser?.coins || 0) - gift.coin_cost
             });
             if (!currentContestant) return;
             const nextEarnings = (currentContestant.total_earnings || 0) + gift.coin_cost;
@@ -138,8 +138,8 @@ export default function Audition() {
                 total_earnings: nextEarnings
             });
             await supabase.entities.ChatMessage.create({
-                user_name: user?.full_name || 'Anonymous',
-                user_email: user?.email,
+                user_name: currentUser?.full_name || 'Anonymous',
+                user_email: currentUser?.email,
                 message: `to ${currentContestant.name || ''}!`,
                 type: 'gift',
                 gift_type: gift.icon,
@@ -147,71 +147,11 @@ export default function Audition() {
                 contestant_id: currentContestant.id
             });
             const updatedUser = await supabase.auth.me();
-            setUser(updatedUser as AuditionUser);
+            setCurrentUser(updatedUser as AuditionUser);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['contestants'] });
             queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
-        }
-    });
-
-    const approveContestantMutation = useMutation<void, unknown, string>({
-        mutationFn: async (id: string) =>
-            supabase.entities.Contestant.update(id, { status: 'approved' }),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contestants'] })
-    });
-
-    const rejectContestantMutation = useMutation<void, unknown, string>({
-        mutationFn: async (id: string) => {
-            await supabase.entities.Contestant.update(id, { status: 'rejected' });
-        },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contestants'] })
-    });
-
-    const bringToStageMutation = useMutation<void, unknown, string>({
-        mutationFn: async (contestantId: string) => {
-            const endTime = new Date(Date.now() + 2 * 60 * 1000).toISOString();
-            if (!showState) return;
-            await supabase.entities.ShowState.update(showState.id, {
-                is_live: true,
-                current_contestant_id: contestantId,
-                curtains_open: true,
-                performance_end_time: endTime
-            });
-            await supabase.entities.Contestant.update(contestantId, { status: 'live' });
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['showState'] });
-            queryClient.invalidateQueries({ queryKey: ['contestants'] });
-            setJudgeScores({});
-            setBuzzedJudges({});
-        }
-    });
-
-    const joinJudgeSeatMutation = useMutation<void, unknown, number>({
-        mutationFn: async (seatNumber: number) => {
-            if (!user?.email) return;
-
-            const existingJudges = await supabase.entities.Judge.filter({ user_email: user.email });
-            const existingJudge = existingJudges[0];
-
-            if (existingJudge) {
-                await supabase.entities.Judge.update(existingJudge.id, {
-                    seat_number: seatNumber,
-                    is_active: true
-                });
-            } else {
-                await supabase.entities.Judge.create({
-                    user_email: user.email,
-                    display_name: user.full_name || 'Judge',
-                    seat_number: seatNumber,
-                    is_active: true,
-                    application_status: 'approved'
-                });
-            }
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['judges'] });
         }
     });
 
@@ -234,7 +174,7 @@ export default function Audition() {
             const trimmed = text.trim();
             if (!trimmed) return;
             await supabase.entities.ChatMessage.create({
-                user_name: user.full_name || 'Judge',
+                user_name: currentUser?.full_name || 'Judge',
                 user_email: user.email,
                 message: trimmed,
                 type: 'system',
@@ -250,72 +190,32 @@ export default function Audition() {
         }
     });
 
-    const handleJudgeScore = async (judgeId: number, score: number) => {
-        setJudgeScores((prev) => ({ ...prev, [judgeId]: score }));
-    };
-
-    const handleJudgeBuzz = async (judgeId: number) => {
-        setBuzzedJudges((prev) => ({ ...prev, [judgeId]: true }));
-    };
-
     return (
         <Layout currentPageName="Audition">
             <div className="h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
                 <div className="h-full flex justify-center px-4 py-6">
                     <div className="w-full max-w-6xl h-full grid grid-cols-[minmax(0,2.1fr)_minmax(0,1.2fr)] grid-rows-[minmax(0,1.5fr)_minmax(0,1fr)] gap-y-0 gap-x-0">
                         <div className="row-start-1 col-start-1 h-full">
-                            <TheaterStage
-                                contestant={currentContestant}
-                                isLive={showState?.is_live}
-                                curtainsOpen={showState?.curtains_open}
-                                timeRemaining={timeRemaining}
-                                viewerCount={showState?.viewer_count || 0}
-                                enableLocalStream={isSelfOnStage}
+                            <CurtainStage
+                                roomType="audition"
+                                onReady={() => {
+                                    // Handle ready state
+                                    console.log('Contestant is ready for audition');
+                                }}
                             />
                         </div>
 
                         <div className="row-start-1 col-start-2 flex items-stretch">
-                            <div className="w-full grid grid-cols-2 grid-rows-2 gap-3">
-                                {[1, 2, 3, 4].map((seatNum) => {
-                                    const judge = judges.find((j) => j.seat_number === seatNum);
-                                    const isCurrentUserJudge = judge?.user_email === user?.email;
-                                    const canJoinSeat = !judge && isJudge;
-                                    return (
-                                        <JudgeBox
-                                            key={seatNum}
-                                            judge={judge}
-                                            seatNumber={seatNum}
-                                            isCurrentUserJudge={isCurrentUserJudge}
-                                            currentScore={judgeScores[seatNum]}
-                                            hasBuzzed={buzzedJudges[seatNum]}
-                                            onScore={(score) => handleJudgeScore(seatNum, score)}
-                                            onBuzz={() => handleJudgeBuzz(seatNum)}
-                                            onJoinSeat={
-                                                canJoinSeat
-                                                    ? () => joinJudgeSeatMutation.mutate(seatNum)
-                                                    : undefined
-                                            }
-                                            contestants={contestants as any}
-                                            currentContestantId={showState?.current_contestant_id}
-                                            onApproveContestant={(id) =>
-                                                approveContestantMutation.mutate(id)
-                                            }
-                                            onRejectContestant={(id) =>
-                                                rejectContestantMutation.mutate(id)
-                                            }
-                                            onBringContestantToStage={(id) =>
-                                                bringToStageMutation.mutate(id)
-                                            }
-                                        />
-                                    );
-                                })}
+                            <div className="w-full">
+                                <JudgePanel roomType="audition" />
                             </div>
                         </div>
 
                         <div className="row-start-2 col-start-2 mt-4 flex flex-col gap-4 min-h-0 overflow-hidden">
+                            <JudgeQueuePanel roomType="audition" />
                             <GiftPanel
                                 gifts={availableGifts}
-                                userCoins={user?.coins || 0}
+                                userCoins={currentUser?.coins || 0}
                                 contestant={currentContestant}
                                 onSendGift={(gift) => sendGiftMutation.mutate(gift)}
                                 isLoading={sendGiftMutation.isPending}
