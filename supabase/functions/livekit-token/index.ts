@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { AccessToken } from "https://esm.sh/livekit-server-sdk@2.10.0";
+import { AccessToken } from "npm:livekit-server-sdk@2.7.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-auth",
@@ -31,9 +31,11 @@ serve(async (req)=>{
     }
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    if (!supabaseUrl || !supabaseAnonKey) {
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || (!supabaseAnonKey && !supabaseServiceRoleKey)) {
       return new Response(JSON.stringify({
-        error: "Missing SUPABASE_URL or SUPABASE_ANON_KEY in Edge Function secrets"
+        error: "Missing SUPABASE_URL or SUPABASE_ANON_KEY/SUPABASE_SERVICE_ROLE_KEY in Edge Function secrets"
       }), {
         status: 500,
         headers: {
@@ -42,14 +44,15 @@ serve(async (req)=>{
         }
       });
     }
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: authHeader
-        }
-      }
-    });
-    const { data, error: userError } = await supabase.auth.getUser();
+
+    // Prefer Service Role Key for better reliability, fallback to Anon Key
+    const supabaseKey = supabaseServiceRoleKey ?? supabaseAnonKey ?? "";
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Verify the user token
+    const token = authHeader.replace("Bearer ", "");
+    const { data, error: userError } = await supabase.auth.getUser(token);
     if (userError || !data?.user) {
       return new Response(JSON.stringify({
         error: "Invalid token / Not authenticated",
@@ -108,7 +111,7 @@ serve(async (req)=>{
     // Generate the JWT token
     let token;
     try {
-      token = at.toJwt();
+      token = await Promise.resolve(at.toJwt());
       console.log("LiveKit token generated successfully");
       console.log("Token type:", typeof token);
       console.log("Token length:", token ? token.length : 0);
